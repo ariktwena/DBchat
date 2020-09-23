@@ -20,6 +20,11 @@ public class ClientHandler {
         out.flush();
     }
 
+    public void welcomeMessageUser(String name){
+        out.print("Welcome to the chat " + name);
+        out.flush();
+    }
+
     public String doYouHaveAProfile(){
         out.println("");
         out.print("Do you have a profile Y/n?");
@@ -27,7 +32,12 @@ public class ClientHandler {
     }
 
     public void unknownInput(){
-        out.println("Sorry, we couldn't identify you input. Please try again.");
+        out.println("Sorry, we couldn't identify your input. Please try again.");
+        out.flush();
+    }
+
+    public void unknownUsername(){
+        out.println("Sorry, we couldn't identify your username");
         out.flush();
     }
 

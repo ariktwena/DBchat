@@ -10,6 +10,7 @@ public interface UserRepo {
     User createUser (User user);
     void deleteUser (User user);
     boolean userExistsInDB (String name);
+    User getUser(String name);
 
 
 }

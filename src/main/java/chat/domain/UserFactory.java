@@ -75,4 +75,28 @@ public class UserFactory implements UserRepo{
 
         return false;
     }
+
+    @Override
+    public User getUser(String name) {
+        User user = null;
+
+        try  {
+            PreparedStatement ps = db.getConnection().prepareStatement(
+                    "SELECT * FROM users WHERE user_name = (?);",
+                    Statement.RETURN_GENERATED_KEYS
+            );
+            ps.setString(1, name);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+
+                user = new User(rs.getInt("user_id"), rs.getString("user_name"));
+
+                return user;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return user;
+    }
 }

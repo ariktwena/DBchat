@@ -63,6 +63,7 @@ public class Client extends Thread implements Closeable {
         });
         try {
             doYouHaveAProfileSwitch();
+            clientHandler.welcomeMessageUser(user.getName());
 
 
 
@@ -119,7 +120,14 @@ public class Client extends Thread implements Closeable {
             case "Y":
                 previousName = name;
                 name = clientHandler.fetchName();
-                //Get User profile
+
+                user = userFactory.getUser(name);
+
+                if(user == null){
+                    clientHandler.unknownUsername();
+                    doYouHaveAProfileSwitch();
+                }
+
                 break;
             case "n":
                 previousName = name;
@@ -135,7 +143,6 @@ public class Client extends Thread implements Closeable {
                     user = userFactory.createUser(user);
                 }
 
-                //Create user
                 break;
             default:
                 clientHandler.unknownInput();
