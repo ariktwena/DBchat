@@ -1,14 +1,14 @@
 package chat.entries;
 
+import chat.core.User;
 import chat.domain.*;
 import chat.infrastructure.DB;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.Scanner;
+import java.util.Date;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -16,18 +16,20 @@ public class Client extends Thread implements Closeable {
     private final Server server;
     private final Socket socket;
     private String name;
-    private final ClientHandler handler;
+    private final ClientHandler clientHandler;
     private final BlockingQueue<String> messageQueue;
     private final DB db;
     private final UserRepo userFactory;
     private final SubscriptionRepo subscriptionFactory;
     private final RoomRepo roomFactory;
     private final MessageRepo messageFactory;
+    private String room;
+    private User user;
 
     public Client(Server server, Socket socket, String name) throws IOException, ClassNotFoundException {
         this.server = server;
         this.socket = socket;
-        this.handler = new ClientHandler(socket.getInputStream(), new PrintWriter(socket.getOutputStream()));
+        this.clientHandler = new ClientHandler(socket.getInputStream(), new PrintWriter(socket.getOutputStream()));
         this.name = name;
         this.messageQueue = new LinkedBlockingQueue<>();
         this.db = new DB();
@@ -35,6 +37,8 @@ public class Client extends Thread implements Closeable {
         this.subscriptionFactory = new SubscriptionFactory(db);
         this.roomFactory = new RoomFactory(db);
         this.messageFactory = new MessageFactory(db);
+        this.room = null;
+        this.user = null;
     }
 
     public String getClientName() {
@@ -46,11 +50,11 @@ public class Client extends Thread implements Closeable {
     public void run() {
         Thread t = new Thread(() -> {
             while (true) {
-                handler.showPrompt();
-                String line = handler.waitForLine();
+                clientHandler.showPrompt();
+                String line = clientHandler.waitForLine();
                 if (line.startsWith("!rename")) {
                     String previousName = name;
-                    name = handler.fetchName();
+                    name = clientHandler.fetchName();
                     server.announceName(this, previousName);
                 } else {
                     server.broadcast(this, line);
@@ -58,16 +62,18 @@ public class Client extends Thread implements Closeable {
             }
         });
         try {
-            String previousName = name;
-            name = handler.fetchName();
-            server.announceName(this, previousName);
+            doYouHaveAProfileSwitch();
+
+
+
+//            server.announceName(this, previousName);
             t.start();
 
             while (true) {
                 String inbound = messageQueue.take();
-                handler.out.println("...");
-                handler.out.println(inbound);
-                handler.showPrompt();
+                clientHandler.printString("...");
+                clientHandler.printString(inbound);
+                clientHandler.showPrompt();
             }
         } catch (InterruptedException e) {
             System.out.println(name + " exited with: " + e.getMessage());
@@ -101,37 +107,72 @@ public class Client extends Thread implements Closeable {
         messageQueue.add(s);
     }
 
-    public class ClientHandler {
-        private final InputStream in;
-        private final PrintWriter out;
+    public void welcomeMessage(){
+        clientHandler.welcomeMessage();
+    }
 
-        public ClientHandler(InputStream in, PrintWriter out) {
-            this.in = in;
-            this.out = out;
-        };
+    public void doYouHaveAProfileSwitch(){
+        String answer = clientHandler.doYouHaveAProfile();
+        String previousName = name;
 
-        private void showPrompt() {
-            out.print("> ");
-            out.flush();
-        }
+        switch (answer) {
+            case "Y":
+                previousName = name;
+                name = clientHandler.fetchName();
+                //Get User profile
+                break;
+            case "n":
+                previousName = name;
+                name = clientHandler.fetchName();
+                Long date = new Date().getTime();
 
-        private String prompt() {
-            showPrompt();
-            return waitForLine();
-        }
+                user = new User(name);
 
-        private String fetchName() {
-            out.println("What's your name, man?");
-            return prompt();
-        }
+                if(userFactory.userExistsInDB(user.getName())){
+                    clientHandler.userExists();
+                    doYouHaveAProfileSwitch();
+                } else{
+                    user = userFactory.createUser(user);
+                }
 
-        private String waitForLine() {
-            return new Scanner(in).nextLine();
-        }
-
-        public boolean hasInput() throws IOException {
-            in.readAllBytes();
-            return in.available() > 0;
+                //Create user
+                break;
+            default:
+                clientHandler.unknownInput();
         }
     }
+
+//    public class ClientHandler {
+//        private final InputStream in;
+//        private final PrintWriter out;
+//
+//        public ClientHandler(InputStream in, PrintWriter out) {
+//            this.in = in;
+//            this.out = out;
+//        };
+//
+//        private void showPrompt() {
+//            out.print("> ");
+//            out.flush();
+//        }
+//
+//        private String prompt() {
+//            showPrompt();
+//            return waitForLine();
+//        }
+//
+//        private String fetchName() {
+//            out.println("What's your name, man?");
+//            return prompt();
+//        }
+//
+//        private String waitForLine() {
+//            return new Scanner(in).nextLine();
+//        }
+//
+//        public boolean hasInput() throws IOException {
+//            in.readAllBytes();
+//            return in.available() > 0;
+//        }
+//    }
 }

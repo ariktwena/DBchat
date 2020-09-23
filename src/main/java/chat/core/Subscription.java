@@ -1,4 +1,4 @@
-package chat.domain;
+package chat.core;
 
 public class Subscription {
 

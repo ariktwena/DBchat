@@ -1,4 +1,4 @@
-package chat.domain;
+package chat.core;
 
 import java.util.Date;
 

@@ -1,5 +1,6 @@
 package chat.domain;
 
+import chat.core.Room;
 import chat.infrastructure.DB;
 
 import java.util.ArrayList;

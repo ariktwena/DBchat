@@ -1,6 +1,4 @@
-package chat.domain;
-
-import java.util.Date;
+package chat.core;
 
 public class Room {
 
