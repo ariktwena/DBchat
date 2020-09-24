@@ -53,21 +53,29 @@ public class Client extends Thread implements Closeable {
                 clientHandler.showPrompt();
                 String line = clientHandler.waitForLine();
                 if (line.startsWith("!rename")) {
-                    String previousName = name;
                     name = clientHandler.fetchName();
-                    server.announceName(this, previousName);
+                    server.announceName(this);
                 } else {
                     server.broadcast(this, line);
                 }
             }
         });
         try {
+
+            //Create new user or login
             doYouHaveAProfileSwitch();
+
+            //Welcome message to the chat
             clientHandler.welcomeMessageUser(user.getName());
 
+            //Choose or create room
+
+            //Enter chat-room
 
 
-//            server.announceName(this, previousName);
+
+
+
             t.start();
 
             while (true) {
@@ -91,6 +99,60 @@ public class Client extends Thread implements Closeable {
         }
     }
 
+
+
+    /**
+     * Welcome to the chat
+     */
+
+    public void doYouHaveAProfileSwitch(){
+        //Profile Y/n to the client when connecting to the Thread
+        String answer = clientHandler.doYouHaveAProfile();
+
+        switch (answer) {
+            case "Y":
+                //Client input name
+                name = clientHandler.fetchName();
+
+                //Get user from DB
+                user = userFactory.getUser(name);
+
+                //Validate DB user_get_request
+                if(user == null){
+                    clientHandler.unknownUsername();
+                    doYouHaveAProfileSwitch();
+                }
+                break;
+
+            case "n":
+                //Client new input name
+                name = clientHandler.fetchName();
+
+                //Crate user
+                user = new User(name);
+
+                //Validate username with DB users table => user_name
+                if(userFactory.userExistsInDB(user.getName())){
+
+                    //Message that user already exists in DB
+                    clientHandler.userExists();
+
+                    //Redirect client to login/create user page
+                    doYouHaveAProfileSwitch();
+                } else{
+                    //Create user in DB
+                    user = userFactory.createUser(user);
+                }
+                break;
+
+            default:
+                //Unknown input => redirect to login/create user page
+                clientHandler.unknownInput();
+        }
+    }
+
+
+
     @Override
     public String toString() {
         return "Client{" +
@@ -112,42 +174,6 @@ public class Client extends Thread implements Closeable {
         clientHandler.welcomeMessage();
     }
 
-    public void doYouHaveAProfileSwitch(){
-        String answer = clientHandler.doYouHaveAProfile();
-        String previousName = name;
-
-        switch (answer) {
-            case "Y":
-                previousName = name;
-                name = clientHandler.fetchName();
-
-                user = userFactory.getUser(name);
-
-                if(user == null){
-                    clientHandler.unknownUsername();
-                    doYouHaveAProfileSwitch();
-                }
-
-                break;
-            case "n":
-                previousName = name;
-                name = clientHandler.fetchName();
-                Long date = new Date().getTime();
-
-                user = new User(name);
-
-                if(userFactory.userExistsInDB(user.getName())){
-                    clientHandler.userExists();
-                    doYouHaveAProfileSwitch();
-                } else{
-                    user = userFactory.createUser(user);
-                }
-
-                break;
-            default:
-                clientHandler.unknownInput();
-        }
-    }
 
 //    public class ClientHandler {
 //        private final InputStream in;

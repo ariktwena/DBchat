@@ -28,6 +28,7 @@ public class ClientHandler {
     public String doYouHaveAProfile(){
         out.println("");
         out.print("Do you have a profile Y/n?");
+        out.flush();
         return prompt();
     }
 
@@ -52,7 +53,7 @@ public class ClientHandler {
     }
 
     public String prompt() {
-        showPrompt();
+//        showPrompt();
         return waitForLine();
     }
 
@@ -60,6 +61,7 @@ public class ClientHandler {
     public String fetchName() {
         out.println("");
         out.print("What's your name?");
+        out.flush();
         return prompt();
     }
 

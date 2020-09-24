@@ -19,6 +19,11 @@ public class RoomFactory implements RoomRepo{
     }
 
     @Override
+    public ArrayList<String> getAllRoomNames() {
+        return null;
+    }
+
+    @Override
     public Room createRoom(Room room) {
         return null;
     }

@@ -7,6 +7,7 @@ import java.util.ArrayList;
 public interface RoomRepo {
 
     ArrayList<Room> getAllRooms();
+    ArrayList<String> getAllRoomNames();
     Room createRoom (Room room);
 
 }

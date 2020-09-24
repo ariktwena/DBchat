@@ -9,11 +9,12 @@ public class Server extends Thread {
     private final ServerSocket socket;
     private final List<Client> clients;
 
+    //Constructor with full information
     public Server(ServerSocket socket, List<Client> clients) {
         this.socket = socket;
         this.clients = clients;
     }
-
+    //Constructor with minimum required information
     public Server(ServerSocket socket) {
         this(socket, new ArrayList<>());
     }
@@ -21,13 +22,17 @@ public class Server extends Thread {
     @Override
     public void run() {
         System.out.println("Listing for clients at: " + socket);
+
+        //Listen for new connections to the server
         try {
             while (true) {
-                Client client = new Client(
-                        this,
-                        socket.accept(),
-                        "anonymous");
+                //Create new client if the is a connection to the server
+                Client client = new Client(this, socket.accept(), "anonymous");
+
+                //Add the clien to the clients array
                 addClient(client);
+
+                //Start the client of a individual socket connection
                 client.start();
             }
         } catch (IOException | ClassNotFoundException e) {
@@ -37,7 +42,10 @@ public class Server extends Thread {
 
 
     public static void main(String[] args) throws IOException {
+        //Create a server on a specific port (1234)
         Server server = new Server(new ServerSocket(1234));
+
+        //Start the server
         server.start();
 
         System.out.println("Server Started!");
@@ -60,7 +68,7 @@ public class Server extends Thread {
         }
     }
 
-    public void announceName(Client from, String previous) {
+    public void announceName(Client from) {
         System.out.println(from.getClientName() + " joined the chat!");
         for (Client c : clients) {
             if (c.equals(from)) continue;
