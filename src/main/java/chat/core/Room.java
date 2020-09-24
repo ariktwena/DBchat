@@ -10,8 +10,9 @@ public class Room {
         this.name = name;
     }
 
-    public static Room createRoom(String name){
-        return new Room(-1, name);
+    public Room(String name) {
+        this.id = -1;
+        this.name = name;
     }
 
     public Room withId (int id) {

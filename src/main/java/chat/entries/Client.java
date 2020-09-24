@@ -1,5 +1,6 @@
 package chat.entries;
 
+import chat.core.Room;
 import chat.core.User;
 import chat.domain.*;
 import chat.infrastructure.DB;
@@ -8,6 +9,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.security.Timestamp;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -19,11 +23,7 @@ public class Client extends Thread implements Closeable {
     private final ClientHandler clientHandler;
     private final BlockingQueue<String> messageQueue;
     private final DB db;
-    private final UserRepo userFactory;
-    private final SubscriptionRepo subscriptionFactory;
-    private final RoomRepo roomFactory;
-    private final MessageRepo messageFactory;
-    private String room;
+    private Room room;
     private User user;
 
     public Client(Server server, Socket socket, String name) throws IOException, ClassNotFoundException {
@@ -33,10 +33,6 @@ public class Client extends Thread implements Closeable {
         this.name = name;
         this.messageQueue = new LinkedBlockingQueue<>();
         this.db = new DB();
-        this.userFactory = new UserFactory(db);
-        this.subscriptionFactory = new SubscriptionFactory(db);
-        this.roomFactory = new RoomFactory(db);
-        this.messageFactory = new MessageFactory(db);
         this.room = null;
         this.user = null;
     }
@@ -48,18 +44,18 @@ public class Client extends Thread implements Closeable {
 
     @Override
     public void run() {
-        Thread t = new Thread(() -> {
-            while (true) {
-                clientHandler.showPrompt();
-                String line = clientHandler.waitForLine();
-                if (line.startsWith("!rename")) {
-                    name = clientHandler.fetchName();
-                    server.announceName(this);
-                } else {
-                    server.broadcast(this, line);
-                }
-            }
-        });
+//        Thread t = new Thread(() -> {
+//            while (true) {
+//                clientHandler.showPrompt();
+//                String line = clientHandler.waitForLine();
+//                if (line.startsWith("!rename")) {
+//                    name = clientHandler.fetchName();
+//                    server.announceName(this);
+//                } else {
+//                    server.broadcast(this, line);
+//                }
+//            }
+//        });
         try {
 
             //Create new user or login
@@ -69,14 +65,15 @@ public class Client extends Thread implements Closeable {
             clientHandler.welcomeMessageUser(user.getName());
 
             //Choose or create room
+            room = createOrEnterExistingRoom();
 
             //Enter chat-room
+            enterRoom(room);
 
 
 
 
-
-            t.start();
+//            t.start();
 
             while (true) {
                 String inbound = messageQueue.take();
@@ -90,12 +87,12 @@ public class Client extends Thread implements Closeable {
             try { close(); } catch (IOException e) {
                 e.printStackTrace();
             }
-            try {
-                t.interrupt();
-                t.join(1000);
-            } catch (InterruptedException e) {
-                t.stop();
-            }
+//            try {
+//                t.interrupt();
+//                t.join(1000);
+//            } catch (InterruptedException e) {
+//                t.stop();
+//            }
         }
     }
 
@@ -115,7 +112,7 @@ public class Client extends Thread implements Closeable {
                 name = clientHandler.fetchName();
 
                 //Get user from DB
-                user = userFactory.getUser(name);
+                user = db.getUser(name);
 
                 //Validate DB user_get_request
                 if(user == null){
@@ -128,11 +125,14 @@ public class Client extends Thread implements Closeable {
                 //Client new input name
                 name = clientHandler.fetchName();
 
+                //Create timeStamp
+                LocalDateTime localTime = LocalDateTime.now();
+
                 //Crate user
-                user = new User(name);
+                user = new User(name, localTime);
 
                 //Validate username with DB users table => user_name
-                if(userFactory.userExistsInDB(user.getName())){
+                if(db.userExistsInDB(user.getName())){
 
                     //Message that user already exists in DB
                     clientHandler.userExists();
@@ -141,7 +141,7 @@ public class Client extends Thread implements Closeable {
                     doYouHaveAProfileSwitch();
                 } else{
                     //Create user in DB
-                    user = userFactory.createUser(user);
+                    user = db.createUser(user);
                 }
                 break;
 
@@ -151,6 +151,62 @@ public class Client extends Thread implements Closeable {
         }
     }
 
+
+    /**
+     * Choose or create room
+     */
+
+    public Room createOrEnterExistingRoom(){
+
+        ArrayList<String> listOfRoomNames = new ArrayList<>();
+        listOfRoomNames = db.getAllRoomNames();
+
+        if(listOfRoomNames.size() == 0 || listOfRoomNames.isEmpty()){
+            clientHandler.noRoomAvailable();
+        } else {
+            clientHandler.hereAreTheActiveRooms();
+            for(int i = 0 ; i < listOfRoomNames.size() ; i++){
+                clientHandler.printRoomName(listOfRoomNames.get(i));
+            }
+        }
+
+        String answer = clientHandler.doYouWantToCreateARoomOrEnterExisting();
+
+        int roomExists = listOfRoomNames.lastIndexOf(answer);
+        if(roomExists > -1){
+
+            room = db.getRoom(answer);
+            return room;
+
+        } else {
+
+            room = new Room(answer);
+            room = db.createRoom(room);
+            return room;
+        }
+    }
+
+    public void enterRoom(Room room){
+        Thread t = new Thread(() -> {
+            while (true) {
+                clientHandler.showPrompt();
+                String line = clientHandler.waitForLine();
+                if (line.startsWith("!rename")) {
+                    name = clientHandler.fetchName();
+                    server.announceName(this);
+                } else {
+                    server.broadcast(this, line);
+                }
+            }
+        });
+        t.start();
+        try {
+            t.interrupt();
+            t.join(1000);
+        } catch (InterruptedException e) {
+            t.stop();
+        }
+    }
 
 
     @Override

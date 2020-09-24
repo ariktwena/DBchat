@@ -8,6 +8,6 @@ public interface RoomRepo {
 
     ArrayList<Room> getAllRooms();
     ArrayList<String> getAllRoomNames();
-    Room createRoom (Room room);
+    Room getRoom (String roomName);
 
 }

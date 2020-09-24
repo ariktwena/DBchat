@@ -16,18 +16,17 @@ public class ClientHandler {
     };
 
     public void welcomeMessage(){
-        out.print("Welcome to the chat.");
+        out.println("Welcome to the chat.");
         out.flush();
     }
 
     public void welcomeMessageUser(String name){
-        out.print("Welcome to the chat " + name);
+        out.println("Welcome to the chat " + name);
         out.flush();
     }
 
     public String doYouHaveAProfile(){
-        out.println("");
-        out.print("Do you have a profile Y/n?");
+        out.println("Do you have a profile Y/n?");
         out.flush();
         return prompt();
     }
@@ -59,8 +58,7 @@ public class ClientHandler {
 
 
     public String fetchName() {
-        out.println("");
-        out.print("What's your name?");
+        out.println("What's your name?");
         out.flush();
         return prompt();
     }
@@ -75,7 +73,33 @@ public class ClientHandler {
     }
 
     public void printString(String string) {
-        out.print(string);
+        out.println(string);
+        out.flush();
+    }
+
+
+    /**
+     * Room
+     */
+
+    public String doYouWantToCreateARoomOrEnterExisting(){
+        out.println("Write the room you want to enter, or create a new room.");
+        out.flush();
+        return prompt();
+    }
+
+    public void printRoomName(String string) {
+        out.println(string);
+        out.flush();
+    }
+
+    public void noRoomAvailable(){
+        out.println("No rooms are available at the moment :/");
+        out.flush();
+    }
+
+    public void hereAreTheActiveRooms(){
+        out.println("Here are the active rooms :)");
         out.flush();
     }
 
