@@ -31,6 +31,11 @@ public class ClientHandler {
         return prompt();
     }
 
+    public void userAlreadyExists() {
+        out.println("User already exists.. Please choose another username.");
+        out.flush();
+    }
+
     public void unknownInput(){
         out.println("Sorry, we couldn't identify your input. Please try again.");
         out.flush();
@@ -83,7 +88,7 @@ public class ClientHandler {
      */
 
     public String doYouWantToCreateARoomOrEnterExisting(){
-        out.println("Write the room you want to enter, or create a new room.");
+        out.println("Write the name of the room you want to enter enter, or [Create] for a new room.");
         out.flush();
         return prompt();
     }
@@ -102,5 +107,27 @@ public class ClientHandler {
         out.println("Here are the active rooms :)");
         out.flush();
     }
+
+    public String whatIsTheNewRoomsName() {
+        out.println("What is the new rooms name?");
+        out.flush();
+        return prompt();
+    }
+
+    public void UnknownRoomNameOrInput() {
+        out.println("Unknown room name or command... :/");
+        out.flush();
+    }
+
+    public void returnToLobby(String roomName) {
+        out.println("You have exited the room: " + roomName + " and returned to the lobby.");
+        out.flush();
+    }
+
+    public void roomAlreadyExists() {
+        out.println("Room already exists.. Please choose another name for the room.");
+        out.flush();
+    }
+
 
 }

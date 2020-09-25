@@ -1,5 +1,7 @@
 package chat.entries;
 
+import chat.core.Room;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
@@ -61,18 +63,42 @@ public class Server extends Thread {
         clients.remove(client);
     }
 
-    public synchronized void broadcast(Client from, String msg) {
+    public synchronized void broadcast(Client from, Room room, String msg) {
         for (Client c : clients) {
-            if (c.equals(from)) continue;
-            c.sendMessage(from.getClientName() + ": " +  msg);
+
+            if(c.getRoom() != null){
+                if (c.getRoom().getName().equalsIgnoreCase(room.getName())){
+
+                    c.sendMessage(from.getClientName() + ": " +  msg);
+                }
+            }
+
         }
     }
 
-    public void announceName(Client from) {
-        System.out.println(from.getClientName() + " joined the chat!");
+    public synchronized void announceName(Client from, Room room) {
+
         for (Client c : clients) {
-            if (c.equals(from)) continue;
-            c.sendMessage(from.getClientName() + " joined the chat!");
+
+            if(c.getRoom() != null){
+                if (c.getRoom().getName().equalsIgnoreCase(room.getName())){
+
+                    c.sendMessage(from.getClientName() + " joined the chat!");
+                }
+            }
+        }
+    }
+
+    public synchronized void announcExitChat(Client from, Room room) {
+
+        for (Client c : clients) {
+
+            if(c.getRoom() != null){
+                if (c.getRoom().getName().equalsIgnoreCase(room.getName())){
+
+                    c.sendMessage(from.getClientName() + " left the chat!");
+                }
+            }
         }
     }
 }

@@ -23,8 +23,9 @@ public class Client extends Thread implements Closeable {
     private final ClientHandler clientHandler;
     private final BlockingQueue<String> messageQueue;
     private final DB db;
-    private Room room;
-    private User user;
+    private volatile Room room;
+    private volatile User user;
+    private boolean lobby;
 
     public Client(Server server, Socket socket, String name) throws IOException, ClassNotFoundException {
         this.server = server;
@@ -35,6 +36,7 @@ public class Client extends Thread implements Closeable {
         this.db = new DB();
         this.room = null;
         this.user = null;
+        this.lobby = false;
     }
 
     public String getClientName() {
@@ -44,18 +46,57 @@ public class Client extends Thread implements Closeable {
 
     @Override
     public void run() {
-//        Thread t = new Thread(() -> {
-//            while (true) {
+        Thread t = new Thread(() -> {
+
+            //Create or choose room from list of available rooms
+            room = createOrEnterExistingRoom(showAvailableRooms());
+            System.out.println("The room..." + room);
+            server.announceName(this, room);
+
+            while (true) {
 //                clientHandler.showPrompt();
-//                String line = clientHandler.waitForLine();
-//                if (line.startsWith("!rename")) {
-//                    name = clientHandler.fetchName();
-//                    server.announceName(this);
-//                } else {
-//                    server.broadcast(this, line);
-//                }
-//            }
-//        });
+                String line = clientHandler.waitForLine();
+
+
+                if (line.startsWith("!lobby")) {
+
+
+                    server.announcExitChat(this, room);
+
+                    //Client returns to the lobby
+                    clientHandler.returnToLobby(room.getName());
+
+                    //Reset room variable
+                    room = null;
+
+                    //reset message queue
+                    messageQueue.clear();
+
+                    //Create or choose room from list of available rooms
+                    room = createOrEnterExistingRoom(showAvailableRooms());
+                    server.announceName(this, room);
+
+                } else if (line.startsWith("!help")) {
+
+                    System.out.println("Help");
+                    //Help output here.....
+
+                } else if (line.startsWith("!userList")) {
+
+                    System.out.println("Help");
+                    //Help output here.....
+
+                } else if (line.startsWith("!roomName")) {
+
+                    System.out.println("Help");
+                    //Help output here.....
+
+                } else {
+
+                    server.broadcast(this, room, line);
+                }
+            }
+        });
         try {
 
             //Create new user or login
@@ -64,42 +105,38 @@ public class Client extends Thread implements Closeable {
             //Welcome message to the chat
             clientHandler.welcomeMessageUser(user.getName());
 
-            //Choose or create room
-            room = createOrEnterExistingRoom();
+            //Start Thread
+            t.start();
 
-            //Enter chat-room
-            enterRoom(room);
-
-
-
-
-//            t.start();
 
             while (true) {
                 String inbound = messageQueue.take();
-                clientHandler.printString("...");
+//                clientHandler.printString("...");
                 clientHandler.printString(inbound);
-                clientHandler.showPrompt();
+//                clientHandler.showPrompt();
             }
+
         } catch (InterruptedException e) {
             System.out.println(name + " exited with: " + e.getMessage());
         } finally {
             try { close(); } catch (IOException e) {
                 e.printStackTrace();
             }
-//            try {
-//                t.interrupt();
-//                t.join(1000);
-//            } catch (InterruptedException e) {
-//                t.stop();
-//            }
+            try {
+                t.interrupt();
+                t.join(1000);
+            } catch (InterruptedException e) {
+                t.stop();
+            }
         }
     }
 
 
 
     /**
+     *
      * Welcome to the chat
+     *
      */
 
     public void doYouHaveAProfileSwitch(){
@@ -125,25 +162,28 @@ public class Client extends Thread implements Closeable {
                 //Client new input name
                 name = clientHandler.fetchName();
 
+                //We loop the name giving of the room name until we get a uniq name
+                while(true){
+                    if(!db.userExistsInDB(name)){
+                        break;
+                    } else {
+                        //Client names the new room
+                        clientHandler.userAlreadyExists();
+                        name = clientHandler.fetchName();
+                    }
+                }
+
                 //Create timeStamp
                 LocalDateTime localTime = LocalDateTime.now();
 
                 //Crate user
                 user = new User(name, localTime);
 
-                //Validate username with DB users table => user_name
-                if(db.userExistsInDB(user.getName())){
+                //Create user in DB
+                user = db.createUser(user);
 
-                    //Message that user already exists in DB
-                    clientHandler.userExists();
-
-                    //Redirect client to login/create user page
-                    doYouHaveAProfileSwitch();
-                } else{
-                    //Create user in DB
-                    user = db.createUser(user);
-                }
                 break;
+
 
             default:
                 //Unknown input => redirect to login/create user page
@@ -153,61 +193,79 @@ public class Client extends Thread implements Closeable {
 
 
     /**
+     *
      * Choose or create room
+     *
      */
 
-    public Room createOrEnterExistingRoom(){
+    public ArrayList<String> showAvailableRooms(){
 
         ArrayList<String> listOfRoomNames = new ArrayList<>();
         listOfRoomNames = db.getAllRoomNames();
 
         if(listOfRoomNames.size() == 0 || listOfRoomNames.isEmpty()){
             clientHandler.noRoomAvailable();
+            return listOfRoomNames;
         } else {
             clientHandler.hereAreTheActiveRooms();
             for(int i = 0 ; i < listOfRoomNames.size() ; i++){
                 clientHandler.printRoomName(listOfRoomNames.get(i));
             }
+            return listOfRoomNames;
         }
+    }
 
+    public Room createOrEnterExistingRoom(ArrayList<String> listOfRoomNames){
+
+        //Client enters existing room name or [Create] to make a new room
         String answer = clientHandler.doYouWantToCreateARoomOrEnterExisting();
 
+        //We check if the client input matches the list of room names array
         int roomExists = listOfRoomNames.lastIndexOf(answer);
-        if(roomExists > -1){
 
+
+        if(roomExists > -1){
+            //If the room exist we fetch it from the DB and return it
             room = db.getRoom(answer);
             return room;
 
         } else {
+            //If the room doesn't exist, we check the client input for [Create]
+            if (answer.equalsIgnoreCase("create")){
 
-            room = new Room(answer);
-            room = db.createRoom(room);
-            return room;
-        }
-    }
+                //Client names the new room
+                String roomName = clientHandler.whatIsTheNewRoomsName();
 
-    public void enterRoom(Room room){
-        Thread t = new Thread(() -> {
-            while (true) {
-                clientHandler.showPrompt();
-                String line = clientHandler.waitForLine();
-                if (line.startsWith("!rename")) {
-                    name = clientHandler.fetchName();
-                    server.announceName(this);
-                } else {
-                    server.broadcast(this, line);
+                //We loop the name giving of the room name until we get a uniq name
+                while(true){
+                    if(!db.roomExistsInDB(roomName)){
+                        break;
+                    } else {
+                        //Client names the new room
+                        clientHandler.roomAlreadyExists();
+                        roomName = clientHandler.whatIsTheNewRoomsName();
+                    }
                 }
+
+                //We create a room and also create the room in the DB. Thereafter we set and return the room.
+                room = new Room(roomName);
+                room = db.createRoom(room);
+                return room;
+
+            } else {
+
+                clientHandler.UnknownRoomNameOrInput();
+                createOrEnterExistingRoom(listOfRoomNames);
             }
-        });
-        t.start();
-        try {
-            t.interrupt();
-            t.join(1000);
-        } catch (InterruptedException e) {
-            t.stop();
         }
+
+        return null;
     }
 
+
+    public Room getRoom() {
+        return room;
+    }
 
     @Override
     public String toString() {

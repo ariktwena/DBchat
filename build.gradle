@@ -9,16 +9,12 @@ repositories {
     mavenCentral()
 }
 
+
 jar {
     manifest {
-     attributes "Main-Class": "DBExperiment"
+        attributes 'Main-Class': 'chat.entries.Server'
     }
-
-    from {
-        configurations.compile.collect {
-            it.isDirectory() ? it : zipTree(it)
-        }
-    }
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
 }
 
 dependencies {

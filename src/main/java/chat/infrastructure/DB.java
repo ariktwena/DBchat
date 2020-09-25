@@ -236,4 +236,33 @@ public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFac
 
         return room;
     }
+
+    @Override
+    public boolean roomExistsInDB(String roomName) {
+        try  (Connection connection = getConnection()){
+            //Prepare a SQL statement from the DB connection
+            PreparedStatement ps = connection.prepareStatement(
+                    "SELECT room_name FROM rooms WHERE room_name = (?);"
+            );
+
+            //Link variables to the SQL statement
+            ps.setString(1, roomName);
+
+            //Execute the SQL query and save the result
+            ResultSet rs = ps.executeQuery();
+
+            //Search if there is a result from the DB execution
+            if (rs.next()) {
+                //Return true, if the is a DB execution result
+                return true;
+
+            } else {
+                //Return false, if the isn't a DB execution result
+                return false;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }
