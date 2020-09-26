@@ -19,15 +19,50 @@ public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFac
     private static final String USER = "testuser";
     private static final String PASS = null;
 
-    public DB() throws ClassNotFoundException {
-        //Load JDBC driver
-        Class.forName(JDBC_DRIVER);
+
+    // Database version
+    private static final int version = 0;
+
+    public DB() {
+        if (getCurrentVersion() != getVersion()) {
+            throw new IllegalStateException("Database in wrong state, expected:"
+                    + getVersion() + ", got: " + getCurrentVersion());
+        }
     }
 
-    //Get DB connection
-    public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(DB_URL, USER, null);
+    public static int getCurrentVersion() {
+        try (Connection conn = getConnection()) {
+            Statement s = conn.createStatement();
+            ResultSet rs = s.executeQuery("SELECT value FROM properties WHERE name = 'version';");
+            if(rs.next()) {
+                String column = rs.getString("value");
+                return Integer.parseInt(column);
+            } else {
+                System.err.println("No version in properties.");
+                return -1;
+            }
+        } catch (SQLException e) {
+            System.err.println(e.getMessage());
+            return -1;
+        }
     }
+
+    public static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(DB_URL, USER, PASS);
+    }
+
+    public static int getVersion() {
+        return version;
+    }
+
+
+
+//
+//    public DB() throws ClassNotFoundException {
+//        //Load JDBC driver
+//        Class.forName(JDBC_DRIVER);
+//    }
+
 
     @Override
     public User createUser(User user) {
