@@ -126,7 +126,7 @@ public class Client extends Thread implements Closeable {
                 t.interrupt();
                 t.join(1000);
             } catch (InterruptedException e) {
-                t.stop();
+                // t.stop();
             }
         }
     }

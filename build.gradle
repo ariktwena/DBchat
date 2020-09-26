@@ -9,6 +9,8 @@ repositories {
     mavenCentral()
 }
 
+sourceCompatibility = 1.11
+targetCompatibility = 1.11
 
 jar {
     manifest {
