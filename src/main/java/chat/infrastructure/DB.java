@@ -21,7 +21,7 @@ public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFac
 
 
     // Database version
-    private static final int version = 0;
+    private static final int version = 2;
 
     public DB() {
         if (getCurrentVersion() != getVersion()) {

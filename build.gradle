@@ -26,10 +26,6 @@ dependencies {
 //    compile group: 'org.mybatis', name: 'mybatis', version: '3.5.5' //Thanks for using https://j
     compile group: 'org.mybatis', name: 'mybatis', version: '3.5.5' //Thanks for using https://j
 
-
-
-
-
     // MYSQL driver
     // https://mvnrepository.com/artifact/mysql/mysql-connector-java
     compile group: 'mysql', name: 'mysql-connector-java', version: '8.0.21'
