@@ -5,6 +5,7 @@ import chat.core.User;
 import chat.domain.*;
 
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 
 public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFactory, RoomService {
@@ -21,7 +22,7 @@ public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFac
 
 
     // Database version
-    private static final int version = 2;
+    private static final int version = 6;
 
     public DB() {
         if (getCurrentVersion() != getVersion()) {
@@ -174,6 +175,52 @@ public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFac
     @Override
     public int getUserId(String name) {
         return 0;
+    }
+
+    @Override
+    public void userLogin(User user) {
+        //Create timeStamp
+        LocalDateTime localTime = LocalDateTime.now();
+
+        try  (Connection connection = getConnection()){
+            //Prepare a SQL statement from the DB connection
+            PreparedStatement ps = connection.prepareStatement(
+                    "INSERT INTO logins (log_time, fk_user_id) VALUES (?, ?);"
+            );
+
+            //Link variables to the SQL statement
+            ps.setTimestamp(1, java.sql.Timestamp.valueOf(localTime));
+            ps.setInt(2, user.getId());
+
+            //Execute the SQL statement to update the DB
+            ps.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void userOnline(User user) {
+        //Create timeStamp
+        LocalDateTime localTime = LocalDateTime.now();
+
+        try  (Connection connection = getConnection()){
+            //Prepare a SQL statement from the DB connection
+            PreparedStatement ps = connection.prepareStatement(
+                    "INSERT INTO online (online_time, fk_user_id) VALUES (?, ?);"
+            );
+
+            //Link variables to the SQL statement
+            ps.setTimestamp(1, java.sql.Timestamp.valueOf(localTime));
+            ps.setInt(2, user.getId());
+
+            //Execute the SQL statement to update the DB
+            ps.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

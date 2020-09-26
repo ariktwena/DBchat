@@ -129,5 +129,8 @@ public class ClientHandler {
         out.flush();
     }
 
-
+    public void youHavEnteredTheRoom(String roomName) {
+        out.println("You have entered the room: " + roomName);
+        out.flush();
+    }
 }

@@ -50,7 +50,7 @@ public class Client extends Thread implements Closeable {
 
             //Create or choose room from list of available rooms
             room = createOrEnterExistingRoom(showAvailableRooms());
-            System.out.println("The room..." + room);
+            clientHandler.youHavEnteredTheRoom(room.getName());
             server.announceName(this, room);
 
             while (true) {
@@ -156,6 +156,11 @@ public class Client extends Thread implements Closeable {
                     clientHandler.unknownUsername();
                     doYouHaveAProfileSwitch();
                 }
+
+                //Login the user and set status to online
+                db.userLogin(user);
+                db.userOnline(user);
+
                 break;
 
             case "n":
@@ -182,8 +187,11 @@ public class Client extends Thread implements Closeable {
                 //Create user in DB
                 user = db.createUser(user);
 
-                break;
+                //Login the user and set status to online
+                db.userLogin(user);
+                db.userOnline(user);
 
+                break;
 
             default:
                 //Unknown input => redirect to login/create user page
