@@ -4,7 +4,7 @@ DROP DATABASE IF EXISTS chat;
 
 CREATE DATABASE  IF NOT EXISTS chat;
 CREATE USER  'testuser'@'localhost';
-grant all privileges on chat.* TO 'testuser'@'localhost' WITH GRANT OPTION;
+grant all privileges on chat.* TO 'testuser'@'localhost';
 
 USE chat;
 
