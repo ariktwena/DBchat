@@ -83,7 +83,7 @@ public class Server extends Thread {
                         timeFormat = message.getDate().getHour() + ":" + message.getDate().getMinute();
                     }
 
-                    String broadcastMessage = String.format("%-5s %s %s%n",
+                    String broadcastMessage = String.format("%-5s %s %s",
                             timeFormat,
                             message.getUser().getName() + ":",
                             message.getContent());

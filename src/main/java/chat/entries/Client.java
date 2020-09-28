@@ -2,6 +2,7 @@ package chat.entries;
 
 import chat.core.Message;
 import chat.core.Room;
+import chat.core.Subscription;
 import chat.core.User;
 import chat.domain.*;
 import chat.infrastructure.DB;
@@ -28,6 +29,7 @@ public class Client extends Thread implements Closeable {
     private volatile Room room;
     private volatile User user;
     private volatile Message message;
+    private volatile Subscription subscription;
 
     public Client(Server server, Socket socket, String name) throws IOException, ClassNotFoundException {
         this.server = server;
@@ -39,6 +41,7 @@ public class Client extends Thread implements Closeable {
         this.room = null;
         this.user = null;
         this.message = null;
+        this.subscription = null;
     }
 
     public String getClientName() {
@@ -50,11 +53,7 @@ public class Client extends Thread implements Closeable {
     public void run() {
         Thread t = new Thread(() -> {
 
-            //Create or choose room from list of available rooms
-            createOrEnterExistingRoom(showAvailableRooms());
-            clientHandler.youHavEnteredTheRoom(room.getName());
-            server.announceName(this, room);
-            messagesFromDB(db.getThe10LastRoomMessages(room, user));
+            chooseCreateEnterRoomAndGetOldMessages();
 
             while (true) {
 //                clientHandler.showPrompt();
@@ -75,52 +74,54 @@ public class Client extends Thread implements Closeable {
                     //reset message queue
                     messageQueue.clear();
 
-                    //Create or choose room from list of available rooms
-                    createOrEnterExistingRoom(showAvailableRooms());
-                    clientHandler.youHavEnteredTheRoom(room.getName());
-                    server.announceName(this, room);
-                    messagesFromDB(db.getThe10LastRoomMessages(room, user));
+                    chooseCreateEnterRoomAndGetOldMessages();
 
                 } else if (line.startsWith("!help")) {
 
-                    System.out.println("Help");
-                    //Help output here.....
+                    //Show the help options to the client
+                    clientHandler.help();
 
-                } else if (line.startsWith("!userList")) {
-
-                    System.out.println("Help");
-                    //Help output here.....
-
-                } else if (line.startsWith("!roomName")) {
+                } else if (line.startsWith("!list")) {
 
                     System.out.println("Help");
                     //Help output here.....
+
+                } else if (line.startsWith("!room")) {
+
+                    //Show room name to the client
+                    clientHandler.roomName(user.getName(), room.getName());
 
                 } else if (line.startsWith("!exit")) {
 
-                    System.out.println("Exit");
-
-                    //Client exit the room announcement
+                    //Client exits the room announcement
                     server.announcExitChat(this, room);
 
                     try {
+                        //Close client socket
                         socket.close();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
 
+                    //Break from the thread (else error)
                     break;
 
                 } else {
 
+                    //Create timestamp
                     LocalDateTime localTime = LocalDateTime.now();
 
-                    //Save to DB
+                    //Create message
                     message = new Message(line, localTime, user, room);
 
+                    //Save message to DB
                     db.createMessage(message);
 
+                    //Set new online timestamp
+                    db.userOnline(user);
+
                     try {
+                        //Broadcast message to other clients
                         server.broadcast(message);
                     } catch (ParseException e) {
                         e.printStackTrace();
@@ -161,7 +162,6 @@ public class Client extends Thread implements Closeable {
             }
         }
     }
-
 
 
     /**
@@ -237,6 +237,24 @@ public class Client extends Thread implements Closeable {
      *
      */
 
+    private void chooseCreateEnterRoomAndGetOldMessages() {
+        //Create or choose room from list of available rooms
+        createOrEnterExistingRoom(showAvailableRooms());
+
+        //Subscription to room
+        subscribeToRoom();
+
+        //Enter a new room message
+        clientHandler.youHavEnteredTheRoom(room.getName());
+
+        //Announce client username to other clients in the room
+        server.announceName(this, room);
+
+        //Load the last 10 messages in the current room
+        messagesFromDB(db.getThe10LastRoomMessages(room, user));
+    }
+
+
     public ArrayList<String> showAvailableRooms(){
 
         ArrayList<String> listOfRoomNames = new ArrayList<>();
@@ -297,6 +315,18 @@ public class Client extends Thread implements Closeable {
         }
     }
 
+    private void subscribeToRoom() {
+
+        //Create timestamp
+        LocalDateTime localTime = LocalDateTime.now();
+
+        //Create new subscription
+        subscription = new Subscription(localTime, user, room);
+
+        //Add subscription to DB
+        db.createSubscriptionForRoom(subscription);
+    }
+
 
     public Room getRoom() {
         return room;
@@ -315,52 +345,16 @@ public class Client extends Thread implements Closeable {
         socket.close();
     }
 
+    //The live messages the client is sending
     public void sendMessage(String s) {
         messageQueue.add(s);
     }
 
+    //The stored messages that are recalled when a user enters the room
     public void messagesFromDB(ArrayList<String> s) {
         for(int i = 0 ; i < s.size() ; i++){
             messageQueue.add(s.get(i));
         }
     }
 
-    public void welcomeMessage(){
-        clientHandler.welcomeMessage();
-    }
-
-
-//    public class ClientHandler {
-//        private final InputStream in;
-//        private final PrintWriter out;
-//
-//        public ClientHandler(InputStream in, PrintWriter out) {
-//            this.in = in;
-//            this.out = out;
-//        };
-//
-//        private void showPrompt() {
-//            out.print("> ");
-//            out.flush();
-//        }
-//
-//        private String prompt() {
-//            showPrompt();
-//            return waitForLine();
-//        }
-//
-//        private String fetchName() {
-//            out.println("What's your name, man?");
-//            return prompt();
-//        }
-//
-//        private String waitForLine() {
-//            return new Scanner(in).nextLine();
-//        }
-//
-//        public boolean hasInput() throws IOException {
-//            in.readAllBytes();
-//            return in.available() > 0;
-//        }
-//    }
 }

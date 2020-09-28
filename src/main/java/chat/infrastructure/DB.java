@@ -2,6 +2,7 @@ package chat.infrastructure;
 
 import chat.core.Message;
 import chat.core.Room;
+import chat.core.Subscription;
 import chat.core.User;
 import chat.domain.*;
 
@@ -9,7 +10,7 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
-public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFactory, RoomService, MessageRepo, MessageFactory, MessageService {
+public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFactory, RoomService, MessageRepo, MessageFactory, MessageService, SubscriptionRepo, SubscriptionFactory, SubscriptionService {
 
     // The entry point of the ChatChad server
 
@@ -23,7 +24,7 @@ public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFac
 
 
     // Database version
-    private static final int version = 6;
+    private static final int version = 7;
 
     public DB() {
         if (getCurrentVersion() != getVersion()) {
@@ -457,5 +458,58 @@ public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFac
 
         return messages;
 
+    }
+
+    @Override
+    public Subscription createSubscriptionForRoom(Subscription subscription) {
+
+        try  (Connection connection = getConnection()){
+            //Prepare a SQL statement from the DB connection
+            PreparedStatement ps = connection.prepareStatement(
+                    "INSERT INTO subscriptions (sub_time, fk_user_id, fk_room_id) VALUES (?, ?, ?);",
+                    Statement.RETURN_GENERATED_KEYS
+            );
+
+            //Link variables to the SQL statement
+            ps.setTimestamp(1, java.sql.Timestamp.valueOf(subscription.getDate()));
+
+            ps.setInt(2, subscription.getUser().getId());
+
+            ps.setInt(3, subscription.getRoom().getId());
+
+            //Execute the SQL statement to update the DB
+            ps.executeUpdate();
+
+            //Optional: Get result from the SQL execution, that returns the executed keys (user_id, user_name etc..)
+            ResultSet rs = ps.getGeneratedKeys();
+
+            //Search if there is a result from the DB execution
+            if (rs.next()) {
+                //Create user from the user_id key that is returned form the DB execution
+                return subscription.withId(rs.getInt(1));
+
+            } else {
+                //Return null, if no result is returned form the execution
+                return null;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Override
+    public ArrayList<User> getAllSubscribingUsersToRoom(Room room) {
+        return null;
+    }
+
+    @Override
+    public void deleteSubscriptionFromRoom(User user, Room room) {
+
+    }
+
+    @Override
+    public int NumberOfSubscribersToRoom(Room room) {
+        return 0;
     }
 }

@@ -15,11 +15,6 @@ public class ClientHandler {
         this.out = out;
     };
 
-    public void welcomeMessage(){
-        out.println("Welcome to the chat.");
-        out.flush();
-    }
-
     public void welcomeMessageUser(String name){
         out.println("Welcome to the chat " + name);
         out.flush();
@@ -131,6 +126,20 @@ public class ClientHandler {
 
     public void youHavEnteredTheRoom(String roomName) {
         out.println("You have entered the room: " + roomName);
+        out.println("Write [!help] to see your options");
+        out.flush();
+    }
+
+    public void help() {
+        out.println("[!lobby]\tReturn to Lobby - Create/Choose room)");
+        out.println("[!list]\tSee all the clients that are connected to the room");
+        out.println("[!room]\tGet the current room name you are in");
+        out.println("[!exit]\tExit the chat :(");
+        out.flush();
+    }
+
+    public void roomName(String userName, String roomName) {
+        out.println(userName + " you are currently in the " + roomName + " room.");
         out.flush();
     }
 }

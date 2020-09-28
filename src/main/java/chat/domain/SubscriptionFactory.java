@@ -5,9 +5,10 @@ import chat.core.Subscription;
 import chat.core.User;
 import chat.infrastructure.DB;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 
 public interface SubscriptionFactory {
 
-    Subscription createSubscriptionForRoom (User user, Room room);
+    Subscription createSubscriptionForRoom (Subscription subscription);
 }
