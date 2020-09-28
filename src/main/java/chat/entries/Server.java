@@ -1,10 +1,16 @@
 package chat.entries;
 
+import chat.core.Message;
 import chat.core.Room;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class Server extends Thread {
@@ -63,13 +69,27 @@ public class Server extends Thread {
         clients.remove(client);
     }
 
-    public synchronized void broadcast(Client from, Room room, String msg) {
+    public synchronized void broadcast(Message message) throws ParseException {
         for (Client c : clients) {
 
             if(c.getRoom() != null){
-                if (c.getRoom().getName().equalsIgnoreCase(room.getName())){
+                if (c.getRoom().getName().equalsIgnoreCase(message.getRoom().getName())){
 
-                    c.sendMessage(from.getClientName() + ": " +  msg);
+                    String timeFormat;
+
+                    if(message.getDate().getMinute() < 10){
+                        timeFormat = message.getDate().getHour() + ":0" + message.getDate().getMinute();
+                    } else {
+                        timeFormat = message.getDate().getHour() + ":" + message.getDate().getMinute();
+                    }
+
+                    String broadcastMessage = String.format("%-5s %s %s%n",
+                            timeFormat,
+                            message.getUser().getName() + ":",
+                            message.getContent());
+
+                    c.sendMessage(broadcastMessage);
+
                 }
             }
 

@@ -1,29 +1,34 @@
 package chat.core;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 
 public class Message {
 
     private final int id;
     private final String content;
-    private final Date date;
-    private final User from;
+    private final LocalDateTime date;
+    private final User user;
     private final Room room;
 
-    public Message(int id, String content, Date date, User from, Room room) {
+    public Message(int id, String content, LocalDateTime date, User user, Room room) {
         this.id = id;
         this.content = content;
         this.date = date;
-        this.from = from;
+        this.user = user;
         this.room = room;
     }
 
-    public static Message createMessage(String content, Date date, User from, Room room){
-        return new Message(-1, content, date, from, room);
+    public Message (String content, LocalDateTime date, User user, Room room){
+        this.id = -1;
+        this.content = content;
+        this.date = date;
+        this.user = user;
+        this.room = room;
     }
 
     public Message withId (int id) {
-        return new Message(id, this.content, this.date, this.from, this.room);
+        return new Message(id, this.content, this.date, this.user, this.room);
     }
 
     public int getId() {
@@ -34,12 +39,12 @@ public class Message {
         return content;
     }
 
-    public Date getDate() {
+    public LocalDateTime getDate() {
         return date;
     }
 
-    public User getFrom() {
-        return from;
+    public User getUser() {
+        return user;
     }
 
     public Room getRoom() {
@@ -48,6 +53,6 @@ public class Message {
 
     @Override
     public String toString() {
-        return "From: " + from + " " + date + ">" + content;
+        return "From: " + user + " " + date + ">" + content;
     }
 }

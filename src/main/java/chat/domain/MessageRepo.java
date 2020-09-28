@@ -8,6 +8,6 @@ import java.util.ArrayList;
 
 public interface MessageRepo {
 
-    Message createMessage (User user, Room room);
+    ArrayList<Message> getAllMessagesFromRoom(Room room);
 
 }

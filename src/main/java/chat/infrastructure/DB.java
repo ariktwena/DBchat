@@ -1,5 +1,6 @@
 package chat.infrastructure;
 
+import chat.core.Message;
 import chat.core.Room;
 import chat.core.User;
 import chat.domain.*;
@@ -8,7 +9,7 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
-public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFactory, RoomService {
+public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFactory, RoomService, MessageRepo, MessageFactory, MessageService {
 
     // The entry point of the ChatChad server
 
@@ -346,5 +347,115 @@ public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFac
             e.printStackTrace();
         }
         return false;
+    }
+
+    @Override
+    public ArrayList<Message> getAllMessagesFromRoom(Room room) {
+        return null;
+    }
+
+    @Override
+    public Message createMessage(Message message) {
+
+        try  (Connection connection = getConnection()){
+            //Prepare a SQL statement from the DB connection
+            PreparedStatement ps = connection.prepareStatement(
+                    "INSERT INTO messages (msg_content, msg_time, fk_user_id, fk_room_id) VALUES (?, ?, ?, ?);",
+                    Statement.RETURN_GENERATED_KEYS
+            );
+
+            //Link variables to the SQL statement
+            ps.setString(1, message.getContent());
+
+            ps.setTimestamp(2, java.sql.Timestamp.valueOf(message.getDate()));
+
+            ps.setInt(3, message.getUser().getId());
+
+            ps.setInt(4, message.getRoom().getId());
+
+            //Execute the SQL statement to update the DB
+            ps.executeUpdate();
+
+            //Optional: Get result from the SQL execution, that returns the executed keys (user_id, user_name etc..)
+            ResultSet rs = ps.getGeneratedKeys();
+
+            //Search if there is a result from the DB execution
+            if (rs.next()) {
+                //Create user from the user_id key that is returned form the DB execution
+                return message.withId(rs.getInt(1));
+
+            } else {
+                //Return null, if no result is returned form the execution
+                return null;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+
+    }
+
+    @Override
+    public int numberOfMessagesFromRoom(Room room) {
+        return 0;
+    }
+
+    @Override
+    public ArrayList<String> getThe10LastRoomMessages(Room room, User user) {
+
+        //Create array list
+        ArrayList<String> messages = new ArrayList<>();
+
+        //Empty
+        String broadcastMessage;
+        String timeFormat;
+
+        try  (Connection connection = getConnection()){
+            //Prepare a SQL statement from the DB connection
+            PreparedStatement ps = connection.prepareStatement(
+                    "select * from ("
+                    + "select "
+                    + "messages.msg_time, "
+                    + "users.user_name, "
+                    + "messages.msg_content "
+                    + "from messages "
+                    + "inner join users "
+                    + "on messages.fk_user_id = users.user_id "
+                    + "where fk_room_id = (?) "
+                    + " and (?) < msg_time order by messages.msg_time desc limit 10"
+                    + ") sub order by msg_time ASC;"
+            );
+
+            //Link variables to the SQL statement
+            ps.setInt(1, room.getId());
+            ps.setTimestamp(2, java.sql.Timestamp.valueOf(user.getDate()));
+
+            //Execute the SQL query and save the result
+            ResultSet rs = ps.executeQuery();
+
+            //Search if there is a result from the DB execution
+            while (rs.next()) {
+
+
+                if(rs.getTimestamp("msg_time").toLocalDateTime().getMinute() < 10){
+                    timeFormat = rs.getTimestamp("msg_time").toLocalDateTime().getHour() + ":0" + rs.getTimestamp("msg_time").toLocalDateTime().getMinute();
+                } else {
+                    timeFormat = rs.getTimestamp("msg_time").toLocalDateTime().getHour() + ":" + rs.getTimestamp("msg_time").toLocalDateTime().getMinute();
+                }
+
+                broadcastMessage = String.format("%-5s %s %s",
+                        timeFormat,
+                        rs.getString("user_name") + ":",
+                        rs.getString("msg_content"));
+
+                messages.add(broadcastMessage);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return messages;
+
     }
 }

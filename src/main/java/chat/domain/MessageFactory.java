@@ -9,6 +9,6 @@ import java.util.ArrayList;
 
 public interface MessageFactory {
 
-    ArrayList<Message> getAllMessagesFromRoom(Room room);
+    Message createMessage (Message message);
 
 }

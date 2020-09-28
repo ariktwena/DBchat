@@ -1,5 +1,6 @@
 package chat.entries;
 
+import chat.core.Message;
 import chat.core.Room;
 import chat.core.User;
 import chat.domain.*;
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.security.Timestamp;
+import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
@@ -25,7 +27,7 @@ public class Client extends Thread implements Closeable {
     private final DB db;
     private volatile Room room;
     private volatile User user;
-    private boolean lobby;
+    private volatile Message message;
 
     public Client(Server server, Socket socket, String name) throws IOException, ClassNotFoundException {
         this.server = server;
@@ -36,7 +38,7 @@ public class Client extends Thread implements Closeable {
         this.db = new DB();
         this.room = null;
         this.user = null;
-        this.lobby = false;
+        this.message = null;
     }
 
     public String getClientName() {
@@ -49,9 +51,10 @@ public class Client extends Thread implements Closeable {
         Thread t = new Thread(() -> {
 
             //Create or choose room from list of available rooms
-            room = createOrEnterExistingRoom(showAvailableRooms());
+            createOrEnterExistingRoom(showAvailableRooms());
             clientHandler.youHavEnteredTheRoom(room.getName());
             server.announceName(this, room);
+            messagesFromDB(db.getThe10LastRoomMessages(room, user));
 
             while (true) {
 //                clientHandler.showPrompt();
@@ -60,7 +63,7 @@ public class Client extends Thread implements Closeable {
 
                 if (line.startsWith("!lobby")) {
 
-
+                    //Client exit the room announcement
                     server.announcExitChat(this, room);
 
                     //Client returns to the lobby
@@ -73,8 +76,10 @@ public class Client extends Thread implements Closeable {
                     messageQueue.clear();
 
                     //Create or choose room from list of available rooms
-                    room = createOrEnterExistingRoom(showAvailableRooms());
+                    createOrEnterExistingRoom(showAvailableRooms());
+                    clientHandler.youHavEnteredTheRoom(room.getName());
                     server.announceName(this, room);
+                    messagesFromDB(db.getThe10LastRoomMessages(room, user));
 
                 } else if (line.startsWith("!help")) {
 
@@ -91,9 +96,35 @@ public class Client extends Thread implements Closeable {
                     System.out.println("Help");
                     //Help output here.....
 
+                } else if (line.startsWith("!exit")) {
+
+                    System.out.println("Exit");
+
+                    //Client exit the room announcement
+                    server.announcExitChat(this, room);
+
+                    try {
+                        socket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    break;
+
                 } else {
 
-                    server.broadcast(this, room, line);
+                    LocalDateTime localTime = LocalDateTime.now();
+
+                    //Save to DB
+                    message = new Message(line, localTime, user, room);
+
+                    db.createMessage(message);
+
+                    try {
+                        server.broadcast(message);
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         });
@@ -223,7 +254,7 @@ public class Client extends Thread implements Closeable {
         }
     }
 
-    public Room createOrEnterExistingRoom(ArrayList<String> listOfRoomNames){
+    public void createOrEnterExistingRoom(ArrayList<String> listOfRoomNames){
 
         //Client enters existing room name or [Create] to make a new room
         String answer = clientHandler.doYouWantToCreateARoomOrEnterExisting();
@@ -235,7 +266,6 @@ public class Client extends Thread implements Closeable {
         if(roomExists > -1){
             //If the room exist we fetch it from the DB and return it
             room = db.getRoom(answer);
-            return room;
 
         } else {
             //If the room doesn't exist, we check the client input for [Create]
@@ -258,16 +288,13 @@ public class Client extends Thread implements Closeable {
                 //We create a room and also create the room in the DB. Thereafter we set and return the room.
                 room = new Room(roomName);
                 room = db.createRoom(room);
-                return room;
 
             } else {
 
                 clientHandler.UnknownRoomNameOrInput();
-                createOrEnterExistingRoom(listOfRoomNames);
+                createOrEnterExistingRoom(showAvailableRooms());
             }
         }
-
-        return null;
     }
 
 
@@ -290,6 +317,12 @@ public class Client extends Thread implements Closeable {
 
     public void sendMessage(String s) {
         messageQueue.add(s);
+    }
+
+    public void messagesFromDB(ArrayList<String> s) {
+        for(int i = 0 ; i < s.size() ; i++){
+            messageQueue.add(s.get(i));
+        }
     }
 
     public void welcomeMessage(){
