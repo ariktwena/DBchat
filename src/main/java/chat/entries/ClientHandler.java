@@ -152,4 +152,9 @@ public class ClientHandler {
         out.println(string);
         out.flush();
     }
+
+    public void roomNameInvalid() {
+        out.println("Room name can't be 'Create'... idiot!");
+        out.flush();
+    }
 }

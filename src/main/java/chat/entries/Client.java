@@ -150,6 +150,12 @@ public class Client extends Thread implements Closeable {
         } catch (InterruptedException e) {
             System.out.println(name + " exited with: " + e.getMessage());
         } finally {
+
+            //*******
+            server.removeClient(this);
+            //Remove client ...
+            //*****
+
             try { close(); } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -213,7 +219,10 @@ public class Client extends Thread implements Closeable {
                     } else {
                         //Client names the new room
                         clientHandler.userAlreadyExists();
-                        name = clientHandler.fetchName();
+
+                        //Back to choose user
+                        doYouHaveAProfileSwitch();
+
                     }
                 }
 
@@ -304,6 +313,10 @@ public class Client extends Thread implements Closeable {
                 while(true){
                     if(!db.roomExistsInDB(roomName)){
                         break;
+                    } else if (roomName.equalsIgnoreCase("create")){
+                        //Client names the new room
+                        clientHandler.roomNameInvalid();
+                        roomName = clientHandler.whatIsTheNewRoomsName();
                     } else {
                         //Client names the new room
                         clientHandler.roomAlreadyExists();
