@@ -131,10 +131,10 @@ public class ClientHandler {
     }
 
     public void help() {
-        out.println("[!lobby]\tReturn to Lobby - Create/Choose room)");
-        out.println("[!list]\tSee all the clients that are connected to the room");
-        out.println("[!room]\tGet the current room name you are in");
-        out.println("[!exit]\tExit the chat :(");
+        out.println("[!lobby] Return to Lobby - Create/Choose room)");
+        out.println("[!list]  See all the clients that are connected to the room");
+        out.println("[!room]  Get the current room name you are in");
+        out.println("[!exit]  Exit the chat :(");
         out.flush();
     }
 
