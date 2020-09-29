@@ -8,6 +8,6 @@ import java.util.ArrayList;
 
 public interface SubscriptionRepo {
 
-    ArrayList<User> getAllSubscribingUsersToRoom(Room room);
+    ArrayList<String> getAllSubscribingUsersFromARoom(Subscription subscription);
 
 }

@@ -499,8 +499,36 @@ public class DB implements UserFactory, UserRepo, UserService, RoomRepo, RoomFac
     }
 
     @Override
-    public ArrayList<User> getAllSubscribingUsersToRoom(Room room) {
-        return null;
+    public ArrayList<String> getAllSubscribingUsersFromARoom(Subscription subscription) {
+        //Create a user object to store a data in
+        ArrayList<String> listOfUsers = new ArrayList<>();
+
+        try  (Connection connection = getConnection()){
+            //Prepare a SQL statement from the DB connection
+            PreparedStatement ps = connection.prepareStatement(
+                    "SELECT DISTINCT users.user_name FROM subscriptions "
+                            + "INNER JOIN users "
+                            + "ON fk_user_id = user_id "
+                            + "WHERE fk_room_id = (?);"
+            );
+
+            //Link variables to the SQL statement
+            ps.setInt(1, subscription.getRoom().getId());
+
+            //Execute the SQL query and save the result
+            ResultSet rs = ps.executeQuery();
+
+            //Search if there is a result from the DB execution
+            while (rs.next()) {
+                //Create a new user from the DB execution result variables
+                listOfUsers.add(rs.getString("user_name"));
+
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return listOfUsers;
     }
 
     @Override

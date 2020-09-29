@@ -59,7 +59,6 @@ public class Client extends Thread implements Closeable {
 //                clientHandler.showPrompt();
                 String line = clientHandler.waitForLine();
 
-
                 if (line.startsWith("!lobby")) {
 
                     //Client exit the room announcement
@@ -83,8 +82,7 @@ public class Client extends Thread implements Closeable {
 
                 } else if (line.startsWith("!list")) {
 
-                    System.out.println("Help");
-                    //Help output here.....
+                    printUserListFromARoom();
 
                 } else if (line.startsWith("!room")) {
 
@@ -140,12 +138,13 @@ public class Client extends Thread implements Closeable {
             //Start Thread
             t.start();
 
+            //Client unique id
+            System.out.println(t.getId());
+
 
             while (true) {
                 String inbound = messageQueue.take();
-//                clientHandler.printString("...");
                 clientHandler.printString(inbound);
-//                clientHandler.showPrompt();
             }
 
         } catch (InterruptedException e) {
@@ -160,6 +159,15 @@ public class Client extends Thread implements Closeable {
             } catch (InterruptedException e) {
                 // t.stop();
             }
+        }
+    }
+
+    private void printUserListFromARoom() {
+
+        clientHandler.roomListMessage(room.getName());
+
+        for(int i = 0 ; i < db.getAllSubscribingUsersFromARoom(subscription).size() ; i++){
+            clientHandler.printRoomUserName(db.getAllSubscribingUsersFromARoom(subscription).get(i));
         }
     }
 

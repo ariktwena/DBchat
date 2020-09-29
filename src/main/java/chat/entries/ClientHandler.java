@@ -142,4 +142,14 @@ public class ClientHandler {
         out.println(userName + " you are currently in the " + roomName + " room.");
         out.flush();
     }
+
+    public void roomListMessage(String roomName) {
+        out.println("The following users are connected to the room: " + roomName);
+        out.flush();
+    }
+
+    public void printRoomUserName(String string) {
+        out.println(string);
+        out.flush();
+    }
 }
