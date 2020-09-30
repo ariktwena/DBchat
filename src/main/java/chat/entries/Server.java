@@ -1,6 +1,7 @@
 package chat.entries;
 
 import chat.core.Message;
+import chat.core.Private_Message;
 import chat.core.Room;
 
 import java.io.IOException;
@@ -96,6 +97,35 @@ public class Server extends Thread {
         }
     }
 
+    public synchronized void privateBroadcast(Private_Message privateMessage) throws ParseException {
+        for (Client c : clients) {
+
+            if(c.getRoom() != null){
+                if (c.getRoom().getName().equalsIgnoreCase(privateMessage.getRoom().getName())
+                        &&
+                        c.getUserName().equals(privateMessage.getUserTo())){
+
+                    String timeFormat;
+
+                    if(privateMessage.getDate().getMinute() < 10){
+                        timeFormat = privateMessage.getDate().getHour() + ":0" + privateMessage.getDate().getMinute();
+                    } else {
+                        timeFormat = privateMessage.getDate().getHour() + ":" + privateMessage.getDate().getMinute();
+                    }
+
+                    String broadcastMessage = String.format("%-5s %s %s",
+                            timeFormat,
+                            privateMessage.getUser().getName() + ":",
+                            "<private> " + privateMessage.getContent());
+
+                    c.sendMessage(broadcastMessage);
+
+                }
+            }
+
+        }
+    }
+
     public synchronized void announceName(Client from, Room room) {
 
         for (Client c : clients) {
@@ -103,7 +133,7 @@ public class Server extends Thread {
             if(c.getRoom() != null){
                 if (c.getRoom().getName().equalsIgnoreCase(room.getName())){
 
-                    c.sendMessage(from.getClientName() + " joined the chat!");
+                    c.sendMessage(from.getUserName() + " joined the chat!");
                 }
             }
         }
@@ -116,7 +146,7 @@ public class Server extends Thread {
             if(c.getRoom() != null){
                 if (c.getRoom().getName().equalsIgnoreCase(room.getName())){
 
-                    c.sendMessage(from.getClientName() + " left the chat!");
+                    c.sendMessage(from.getUserName() + " left the chat!");
                 }
             }
         }

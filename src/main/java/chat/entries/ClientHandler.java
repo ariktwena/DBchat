@@ -133,6 +133,8 @@ public class ClientHandler {
     public void help() {
         out.println("[!lobby] Return to Lobby - Create/Choose room)");
         out.println("[!list]  See all the clients that are connected to the room");
+        out.println("[!sendP] Send a private message");
+        out.println("[!getP]  Get the last x number of private messages");
         out.println("[!room]  Get the current room name you are in");
         out.println("[!exit]  Exit the chat :(");
         out.flush();
@@ -155,6 +157,21 @@ public class ClientHandler {
 
     public void roomNameInvalid() {
         out.println("Room name can't be 'Create'... idiot!");
+        out.flush();
+    }
+
+    public void invalidRecipientName() {
+        out.println("Sorry... The username you want to send to is invalid. You are returned to the chat.");
+        out.flush();
+    }
+
+    public void whoDoYouWantToSendAPrivateMessageTo() {
+        out.println("Please write the username of the person you want to send a private message to.");
+        out.flush();
+    }
+
+    public void writeThePrivateMessage() {
+        out.println("Please write the private message and press [Enter].");
         out.flush();
     }
 }

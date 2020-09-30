@@ -1,9 +1,6 @@
 package chat.entries;
 
-import chat.core.Message;
-import chat.core.Room;
-import chat.core.Subscription;
-import chat.core.User;
+import chat.core.*;
 import chat.domain.*;
 import chat.infrastructure.DB;
 
@@ -29,6 +26,7 @@ public class Client extends Thread implements Closeable {
     private volatile Room room;
     private volatile User user;
     private volatile Message message;
+    private volatile Private_Message privateMessage;
     private volatile Subscription subscription;
 
     public Client(Server server, Socket socket, String name) throws IOException, ClassNotFoundException {
@@ -41,13 +39,9 @@ public class Client extends Thread implements Closeable {
         this.room = null;
         this.user = null;
         this.message = null;
+        this.privateMessage = null;
         this.subscription = null;
     }
-
-    public String getClientName() {
-        return name;
-    }
-
 
     @Override
     public void run() {
@@ -75,21 +69,58 @@ public class Client extends Thread implements Closeable {
 
                     chooseCreateEnterRoomAndGetOldMessages();
 
+                    //Set new online timestamp
+                    db.userOnline(user);
+
                 } else if (line.startsWith("!help")) {
 
                     //Show the help options to the client
                     clientHandler.help();
 
+                    //Set new online timestamp
+                    db.userOnline(user);
+
                 } else if (line.startsWith("!list")) {
 
+                    //Print a user list of the current room
                     printUserListFromARoom();
+
+                    //Set new online timestamp
+                    db.userOnline(user);
 
                 } else if (line.startsWith("!room")) {
 
                     //Show room name to the client
                     clientHandler.roomName(user.getName(), room.getName());
 
-                } else if (line.startsWith("!exit")) {
+                    //Set new online timestamp
+                    db.userOnline(user);
+
+                } else if (line.startsWith("!sendP")) {
+
+                    //Send private message
+                    try {
+                        sendAPrivateMessage();
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
+
+                    //Set new online timestamp
+                    db.userOnline(user);
+
+
+
+                } else if (line.startsWith("!getP")) {
+
+
+                    //Load the last 10 messages in the current room
+                    messagesFromDB(db.get10NumberOfRoomPrivateMessages(room, user));
+
+
+                    //Set new online timestamp
+                    db.userOnline(user);
+
+                }else if (line.startsWith("!exit")) {
 
                     //Client exits the room announcement
                     server.announcExitChat(this, room);
@@ -113,7 +144,7 @@ public class Client extends Thread implements Closeable {
                     message = new Message(line, localTime, user, room);
 
                     //Save message to DB
-                    db.createMessage(message);
+                    message = db.createMessage(message);
 
                     //Set new online timestamp
                     db.userOnline(user);
@@ -150,12 +181,7 @@ public class Client extends Thread implements Closeable {
         } catch (InterruptedException e) {
             System.out.println(name + " exited with: " + e.getMessage());
         } finally {
-
-            //*******
-            server.removeClient(this);
-            //Remove client ...
-            //*****
-
+            //We remove the client through the method close(), and close the socket
             try { close(); } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -168,6 +194,10 @@ public class Client extends Thread implements Closeable {
         }
     }
 
+    /**
+     * Show users in the current room
+     */
+
     private void printUserListFromARoom() {
 
         clientHandler.roomListMessage(room.getName());
@@ -175,6 +205,50 @@ public class Client extends Thread implements Closeable {
         for(int i = 0 ; i < db.getAllSubscribingUsersFromARoom(subscription).size() ; i++){
             clientHandler.printRoomUserName(db.getAllSubscribingUsersFromARoom(subscription).get(i));
         }
+    }
+
+    /**
+     * Send private message
+     */
+
+    private void sendAPrivateMessage() throws ParseException {
+
+        //Print a user list of the current room
+        printUserListFromARoom();
+
+        //Get the recipient username
+        clientHandler.whoDoYouWantToSendAPrivateMessageTo();
+        String whoToSendTo = clientHandler.waitForLine();
+
+        //Check if input is a valid user to send to
+        int recipientExists = db.getAllSubscribingUsersFromARoom(subscription).lastIndexOf(whoToSendTo);
+
+        if(recipientExists > -1){
+
+            //Get the recipient username
+            clientHandler.writeThePrivateMessage();
+            String thePrivateMessage = clientHandler.waitForLine();
+
+            //Create timestamp
+            LocalDateTime localTime = LocalDateTime.now();
+
+            //Create message
+            privateMessage = new Private_Message(thePrivateMessage, localTime, user, room, whoToSendTo);
+
+            //Get recipient id
+            int recipient_id = db.getUserId(whoToSendTo);
+
+            //Save message to DB
+            privateMessage = db.createPrivateMessage(privateMessage, recipient_id);
+
+            //Send private message
+            server.privateBroadcast(privateMessage);
+
+
+        } else {
+            clientHandler.invalidRecipientName();
+        }
+
     }
 
 
@@ -348,6 +422,9 @@ public class Client extends Thread implements Closeable {
         db.createSubscriptionForRoom(subscription);
     }
 
+    public String getUserName() {
+        return name;
+    }
 
     public Room getRoom() {
         return room;
