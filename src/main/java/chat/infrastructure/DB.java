@@ -124,7 +124,7 @@ public class DB implements
     }
 
     @Override
-    public boolean userExistsInDB(String name) {
+    public boolean userAldreadyExistsInDB(String name) {
         try  (Connection connection = getConnection()){
             //Prepare a SQL statement from the DB connection
             PreparedStatement ps = connection.prepareStatement(

@@ -13,6 +13,7 @@ import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.NoSuchElementException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -28,6 +29,7 @@ public class Client extends Thread implements Closeable {
     private volatile Message message;
     private volatile Private_Message privateMessage;
     private volatile Subscription subscription;
+    private volatile boolean clientUserValidated;
 
     public Client(Server server, Socket socket, String name) throws IOException, ClassNotFoundException {
         this.server = server;
@@ -41,6 +43,7 @@ public class Client extends Thread implements Closeable {
         this.message = null;
         this.privateMessage = null;
         this.subscription = null;
+        this.clientUserValidated = false;
     }
 
     @Override
@@ -53,10 +56,11 @@ public class Client extends Thread implements Closeable {
 //                clientHandler.showPrompt();
                 String line = clientHandler.waitForLine();
 
+
                 if (line.startsWith("!lobby")) {
 
                     //Client exit the room announcement
-                    server.announcExitChat(this, room);
+                    server.announceExitChat(this, room);
 
                     //Client returns to the lobby
                     clientHandler.returnToLobby(room.getName());
@@ -123,11 +127,11 @@ public class Client extends Thread implements Closeable {
                 }else if (line.startsWith("!exit")) {
 
                     //Client exits the room announcement
-                    server.announcExitChat(this, room);
+                    server.announceExitChat(this, room);
 
                     try {
                         //Close client socket
-                        socket.close();
+                        close();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -163,20 +167,24 @@ public class Client extends Thread implements Closeable {
             //Create new user or login
             doYouHaveAProfileSwitch();
 
-            //Welcome message to the chat
-            clientHandler.welcomeMessageUser(user.getName());
+            //App continues if the user is not already logged in
+            if(clientUserValidated){
+                //Welcome message to the chat
+                clientHandler.welcomeMessageUser(user.getName());
 
-            //Start Thread
-            t.start();
+                //Start Thread
+                t.start();
 
-            //Client unique id
-            System.out.println(t.getId());
+                //Client unique id
+                System.out.println(t.getId());
 
 
-            while (true) {
-                String inbound = messageQueue.take();
-                clientHandler.printString(inbound);
+                while (true) {
+                    String inbound = messageQueue.take();
+                    clientHandler.printString(inbound);
+                }
             }
+
 
         } catch (InterruptedException e) {
             System.out.println(name + " exited with: " + e.getMessage());
@@ -274,24 +282,48 @@ public class Client extends Thread implements Closeable {
                 if(user == null){
                     clientHandler.unknownUsername();
                     doYouHaveAProfileSwitch();
+
                 }
 
-                //Login the user and set status to online
-                db.userLogin(user);
-                db.userOnline(user);
+//                //if the user exists in the DB, BUT is not already logged in
+//                else if(server.isClientAlreadyLoggedIn(user.getName())){
+//
+//                    //User is already logged in and goodbye message
+//                    clientHandler.youAreAldreadyLoogedIn();
+//
+//                    try {
+//                        //Close client socket
+//                        close();
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//
+//                    //Break from the thread (else error)
+//                    break;
+//                }
 
-                break;
+                else {
+                    //Login the user and set status to online
+                    db.userLogin(user);
+                    db.userOnline(user);
+
+                    clientUserValidated = true;
+
+                    break;
+                }
 
             case "n":
                 //Client new input name
                 name = clientHandler.fetchName();
 
-                //We loop the name giving of the room name until we get a uniq name
+                //We loop the name giving of the room name until we get a unique name
                 while(true){
-                    if(!db.userExistsInDB(name)){
+                    //If the username is unique and doesn't exist in DB
+                    if(!db.userAldreadyExistsInDB(name)){
                         break;
+
                     } else {
-                        //Client names the new room
+                        //Username already exists in DB
                         clientHandler.userAlreadyExists();
 
                         //Back to choose user
@@ -318,6 +350,9 @@ public class Client extends Thread implements Closeable {
             default:
                 //Unknown input => redirect to login/create user page
                 clientHandler.unknownInput();
+
+                //Restart the login process
+                doYouHaveAProfileSwitch();
         }
     }
 

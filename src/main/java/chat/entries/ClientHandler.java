@@ -3,6 +3,7 @@ package chat.entries;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 public class ClientHandler {
@@ -172,6 +173,11 @@ public class ClientHandler {
 
     public void writeThePrivateMessage() {
         out.println("Please write the private message and press [Enter].");
+        out.flush();
+    }
+
+    public void youAreAldreadyLoogedIn() {
+        out.println("Sorry... You are already logged in with this user! Bye..");
         out.flush();
     }
 }

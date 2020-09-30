@@ -70,6 +70,24 @@ public class Server extends Thread {
         clients.remove(client);
     }
 
+    //Search if client/user is logged in already
+    public synchronized boolean isClientAlreadyLoggedIn(String userName){
+        int count = 0;
+
+        for (Client c : clients) {
+            if(c.getUserName().equalsIgnoreCase(userName)){
+                count++;
+            }
+        }
+
+        if(count > 1){
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    //Broadcast messages to other clients
     public synchronized void broadcast(Message message) throws ParseException {
         for (Client c : clients) {
 
@@ -97,6 +115,7 @@ public class Server extends Thread {
         }
     }
 
+    //Broadcast private messages to a single client
     public synchronized void privateBroadcast(Private_Message privateMessage) throws ParseException {
         for (Client c : clients) {
 
@@ -126,6 +145,7 @@ public class Server extends Thread {
         }
     }
 
+    //Announce the user/client name in the chat room when entering
     public synchronized void announceName(Client from, Room room) {
 
         for (Client c : clients) {
@@ -139,7 +159,8 @@ public class Server extends Thread {
         }
     }
 
-    public synchronized void announcExitChat(Client from, Room room) {
+    //Announce the user/client name in the chat room when entering
+    public synchronized void announceExitChat(Client from, Room room) {
 
         for (Client c : clients) {
 
