@@ -1,22 +1,21 @@
 package chat.entries;
 
+import chat.api.DBChat;
 import chat.core.Message;
 import chat.core.Private_Message;
 import chat.core.Room;
+import chat.infrastructure.DB;
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.text.DateFormat;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 public class Server extends Thread {
     private final ServerSocket socket;
     private final List<Client> clients;
+    private final DBChat api = new DBChat(new DB());
 
     //Constructor with full information
     public Server(ServerSocket socket, List<Client> clients) {
@@ -36,7 +35,7 @@ public class Server extends Thread {
         try {
             while (true) {
                 //Create new client if the is a connection to the server
-                Client client = new Client(this, socket.accept(), "anonymous");
+                Client client = new Client(this, socket.accept(), "anonymous", api);
 
                 //Add the clien to the clients array
                 addClient(client);

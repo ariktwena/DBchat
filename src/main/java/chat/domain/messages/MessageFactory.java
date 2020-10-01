@@ -1,4 +1,4 @@
-package chat.domain;
+package chat.domain.messages;
 
 import chat.core.Message;
 import chat.core.Room;

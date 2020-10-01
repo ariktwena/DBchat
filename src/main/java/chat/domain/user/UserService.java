@@ -1,8 +1,8 @@
-package chat.domain;
+package chat.domain.user;
 
 import chat.core.User;
 
-public interface UserService {
+public interface UserService extends UserRepo {
 
     void deleteUser (User user);
     boolean userAldreadyExistsInDB (String name);

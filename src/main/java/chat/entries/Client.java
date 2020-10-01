@@ -2,6 +2,10 @@ package chat.entries;
 
 import chat.core.*;
 import chat.api.*;
+import chat.domain.user.InvalidPassword;
+import chat.domain.user.InvalidUsernameOrPassword;
+import chat.domain.user.UserAlreadyLoggedIn;
+import chat.domain.user.UserExists;
 import chat.infrastructure.DB;
 
 import java.io.Closeable;
@@ -26,10 +30,10 @@ public class Client extends Thread implements Closeable {
     private volatile Message message;
     private volatile Private_Message privateMessage;
     private volatile Subscription subscription;
-    private volatile boolean clientUserValidated;
-    private final DBChat chat;
 
-    public Client(Server server, Socket socket, String name) throws IOException, ClassNotFoundException {
+    private final DBChat api;
+
+    public Client(Server server, Socket socket, String name, DBChat api) throws IOException, ClassNotFoundException {
         this.server = server;
         this.socket = socket;
         this.clientHandler = new ClientHandler(socket.getInputStream(), new PrintWriter(socket.getOutputStream()));
@@ -41,122 +45,19 @@ public class Client extends Thread implements Closeable {
         this.message = null;
         this.privateMessage = null;
         this.subscription = null;
-        this.clientUserValidated = false;
-        this.chat = new DBChat(db, db);
+        this.api = api;
     }
 
     @Override
     public void run() {
         Thread t = new Thread(() -> {
 
+            //Create og choose a room
             chooseCreateEnterRoomAndGetOldMessages();
 
-            while (true) {
-//                clientHandler.showPrompt();
-                String line = clientHandler.waitForLine();
+            //Handle the rest of the user inputs through a loop
+            inputHandlerLoop();
 
-
-                if (line.startsWith("!lobby")) {
-
-                    //Client exit the room announcement
-                    server.announceExitChat(this, room);
-
-                    //Client returns to the lobby
-                    clientHandler.returnToLobby(room.getName());
-
-                    //Reset room variable
-                    room = null;
-
-                    //reset message queue
-                    messageQueue.clear();
-
-                    chooseCreateEnterRoomAndGetOldMessages();
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                } else if (line.startsWith("!help")) {
-
-                    //Show the help options to the client
-                    clientHandler.help();
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                } else if (line.startsWith("!list")) {
-
-                    //Print a user list of the current room
-                    printUserListFromARoom();
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                } else if (line.startsWith("!room")) {
-
-                    //Show room name to the client
-                    clientHandler.roomName(user.getName(), room.getName());
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                } else if (line.startsWith("!sendP")) {
-
-                    //Send private message
-                    try {
-                        sendAPrivateMessage();
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                } else if (line.startsWith("!getP")) {
-
-                    //Load the last 10 messages in the current room
-                    messagesFromDB(db.get10NumberOfRoomPrivateMessages(room, user));
-
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                } else if (line.startsWith("!exit")) {
-
-                    //Client exits the room announcement
-                    server.announceExitChat(this, room);
-
-                    try {
-                        //Close client socket
-                        close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                    //Break from the thread (else error)
-                    break;
-
-                } else {
-
-                    //Create timestamp
-                    LocalDateTime localTime = LocalDateTime.now();
-
-                    //Create message
-                    message = new Message(line, localTime, user, room);
-
-                    //Save message to DB
-                    message = db.createMessage(message);
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                    try {
-                        //Broadcast message to other clients
-                        server.broadcast(message);
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
         });
         try {
 
@@ -180,10 +81,6 @@ public class Client extends Thread implements Closeable {
 
         } catch (InterruptedException e) {
             System.out.println(name + " exited with: " + e.getMessage());
-        } catch (UserExists userExists) {
-            userExists.printStackTrace();
-        } catch (InvalidPassword invalidPassword) {
-            invalidPassword.printStackTrace();
         } finally {
             //We remove the client through the method close(), and close the socket
             try { close(); } catch (IOException e) {
@@ -199,6 +96,118 @@ public class Client extends Thread implements Closeable {
     }
 
     /**
+     * Input handler
+     */
+
+    private void inputHandlerLoop(){
+        while (true) {
+            String line = clientHandler.waitForLine();
+
+            if (line.startsWith("!lobby")) {
+
+                //Client exit the room announcement
+                server.announceExitChat(this, room);
+
+                //Client returns to the lobby
+                clientHandler.returnToLobby(room.getName());
+
+                //Reset room variable
+                room = null;
+
+                //reset message queue
+                messageQueue.clear();
+
+                chooseCreateEnterRoomAndGetOldMessages();
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+            } else if (line.startsWith("!help")) {
+
+                //Show the help options to the client
+                clientHandler.help();
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+            } else if (line.startsWith("!list")) {
+
+                //Print a user list of the current room
+                printUserListFromARoom();
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+            } else if (line.startsWith("!room")) {
+
+                //Show room name to the client
+                clientHandler.roomName(user.getName(), room.getName());
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+            } else if (line.startsWith("!sendP")) {
+
+                //Send private message
+                try {
+                    sendAPrivateMessage();
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+            } else if (line.startsWith("!getP")) {
+
+                //Load the last 10 messages in the current room
+                messagesFromDB(db.get10NumberOfRoomPrivateMessages(room, user));
+
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+            } else if (line.startsWith("!exit")) {
+
+                //Client exits the room announcement
+                server.announceExitChat(this, room);
+
+                try {
+                    //Close client socket
+                    close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                //Break from the thread (else error)
+                break;
+
+            } else {
+
+                //Create timestamp
+                LocalDateTime localTime = LocalDateTime.now();
+
+                //Create message
+                message = new Message(line, localTime, user, room);
+
+                //Save message to DB
+                message = db.createMessage(message);
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+                try {
+                    //Broadcast message to other clients
+                    server.broadcast(message);
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+
+    /**
      * Show users in the current room
      */
 
@@ -206,9 +215,14 @@ public class Client extends Thread implements Closeable {
 
         clientHandler.roomListMessage(room.getName());
 
-        for(int i = 0 ; i < db.getAllSubscribingUsersFromARoom(subscription).size() ; i++){
-            clientHandler.printRoomUserName(db.getAllSubscribingUsersFromARoom(subscription).get(i));
+//        for(int i = 0 ; i < db.getAllSubscribingUsersFromARoom(subscription).size() ; i++){
+//            clientHandler.printRoomUserName(db.getAllSubscribingUsersFromARoom(subscription).get(i));
+//        }
+
+        for(String name : db.getAllSubscribingUsersFromARoom(subscription)){
+            clientHandler.printRoomUserName(name);
         }
+
     }
 
     /**
@@ -262,7 +276,7 @@ public class Client extends Thread implements Closeable {
      *
      */
 
-    public void doYouHaveAProfileSwitch() throws UserExists, InvalidPassword {
+    private void doYouHaveAProfileSwitch() {
         String password1, password2;
 
         //Profile Y/n to the client when connecting to the Thread
@@ -277,103 +291,111 @@ public class Client extends Thread implements Closeable {
                 password1 = clientHandler.fetchPassword();
 
 
-                //Get user from DB
-                user = chat.login(name, password1);
-//                user = db.getUser(name);
+                //Check the username and password that is provided, and the user from DB
+                try {
+                    user = api.loginValidation(name, password1);
 
+                    break;
 
-                //Validate DB user_get_request
-                if(user == null){
-                    clientHandler.unknownUsername();
+                } catch(NullPointerException | InvalidUsernameOrPassword e){
+                    //Unknown username or password
+                    clientHandler.unknownUsernameOrPassword();
                     doYouHaveAProfileSwitch();
 
-                }
-
-                //if the user exists in the DB, BUT is not already logged in
-                else if(server.isClientAlreadyLoggedIn(user.getName())){
-
+                } catch (UserAlreadyLoggedIn e){
                     //User is already logged in and goodbye message
                     clientHandler.youAreAldreadyLoogedIn();
 
                     try {
                         //Close client socket
                         close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    } catch (IOException ee) {
+                        ee.printStackTrace();
                     }
 
-                    //Break from the thread (else error)
-                    break;
                 }
 
-                else {
+                //Break from the thread (else error)
+                break;
 
 
-                    //Login the user and set status to online
-                    db.userLogin(user);
-                    db.userOnline(user);
-
-                    break;
-                }
+                /**
+                 * Old code
+                 */
+//                //Check the username and password that is provided, and the user from DB
+//                user = api.loginValidation(name, password1);
+////                user = db.getUser(name);
+//
+//                //Validate DB user_get_request
+//                if(user == null){
+//                    clientHandler.unknownUsername();
+//                    doYouHaveAProfileSwitch();
+//
+//                }
+//
+//                //if the user exists in the DB, BUT is not already logged in
+//                else if(server.isClientAlreadyLoggedIn(user.getName())){
+//
+//                    //User is already logged in and goodbye message
+//                    clientHandler.youAreAldreadyLoogedIn();
+//
+//                    try {
+//                        //Close client socket
+//                        close();
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//
+//                    //Break from the thread (else error)
+//                    break;
+//                }
+//
+//                else {
+//
+//
+//                    //Login the user and set status to online
+//                    db.userLogin(user);
+//                    db.userOnline(user);
+//
+//                    break;
+//                }
 
             case "n":
                 //Client new input name
                 name = clientHandler.fetchName();
 
-                //We loop the name giving of the room name until we get a unique name
-                while(true){
-                    //If the username is unique and doesn't exist in DB
-                    if(!db.userAldreadyExistsInDB(name)){
-                        break;
-
-                    } else {
-                        //Username already exists in DB
-                        clientHandler.userAlreadyExists();
-
-                        //Back to choose user
-                        doYouHaveAProfileSwitch();
-
-                    }
-                }
-
+                //Create password
                 clientHandler.typePassword();
                 password1 = clientHandler.fetchPassword();
                 clientHandler.typePasswordAgain();
                 password2 = clientHandler.fetchPassword();
 
-                if(password1.equals(password2)){
+                //Create timeStamp
+                LocalDateTime localTime = LocalDateTime.now();
 
-                    //Create timeStamp
-                    LocalDateTime localTime = LocalDateTime.now();
+                //Create user in the api and the the user that is returned returned
+                try {
+                    user = api.createUserInSystemAndDB(name, password1, password2, localTime);
 
-                    //Crate user
-                    user = chat.createUser(name, password1, localTime);
-//                    user = new User(name, localTime);
-
-                    //Create user in DB
-//                    user = db.createUser(user);
-
-                    //Login the user and set status to online
                     db.userLogin(user);
                     db.userOnline(user);
 
-
-
-
                     break;
 
+                } catch (UserExists e){
+                    //Username already exists in DB
+                    clientHandler.userAlreadyExists();
 
-                } else {
+                    //Back to choose user
+                    doYouHaveAProfileSwitch();
 
+                } catch (InvalidPassword e){
                     //Password do no match
                     clientHandler.passwordsDoNotMatch();
 
                     //Back to choose user
                     doYouHaveAProfileSwitch();
-
                 }
-
-
 
             default:
                 //Unknown input => redirect to login/create user page
@@ -409,7 +431,7 @@ public class Client extends Thread implements Closeable {
     }
 
 
-    public ArrayList<String> showAvailableRooms(){
+    private ArrayList<String> showAvailableRooms(){
 
         ArrayList<String> listOfRoomNames = new ArrayList<>();
         listOfRoomNames = db.getAllRoomNames();
@@ -426,7 +448,7 @@ public class Client extends Thread implements Closeable {
         }
     }
 
-    public void createOrEnterExistingRoom(ArrayList<String> listOfRoomNames){
+    private void createOrEnterExistingRoom(ArrayList<String> listOfRoomNames){
 
         //Client enters existing room name or [Create] to make a new room
         String answer = clientHandler.doYouWantToCreateARoomOrEnterExisting();

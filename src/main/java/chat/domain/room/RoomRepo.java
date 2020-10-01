@@ -1,10 +1,10 @@
-package chat.domain;
+package chat.domain.room;
 
 import chat.core.Room;
 
 import java.util.ArrayList;
 
-public interface RoomRepo {
+public interface RoomRepo extends RoomFactory{
 
     ArrayList<Room> getAllRooms();
     ArrayList<String> getAllRoomNames();

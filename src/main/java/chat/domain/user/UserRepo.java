@@ -1,4 +1,4 @@
-package chat.domain;
+package chat.domain.user;
 
 import chat.core.User;
 

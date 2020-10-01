@@ -1,7 +1,20 @@
 package chat.infrastructure;
 
 import chat.core.*;
-import chat.domain.*;
+import chat.domain.messages.MessageFactory;
+import chat.domain.messages.MessageRepo;
+import chat.domain.messages.MessageService;
+import chat.domain.privatemessages.PrivateMessageFactory;
+import chat.domain.privatemessages.PrivateMessageService;
+import chat.domain.room.RoomFactory;
+import chat.domain.room.RoomRepo;
+import chat.domain.room.RoomService;
+import chat.domain.subscription.SubscriptionFactory;
+import chat.domain.subscription.SubscriptionRepo;
+import chat.domain.subscription.SubscriptionService;
+import chat.domain.user.UserFactory;
+import chat.domain.user.UserRepo;
+import chat.domain.user.UserService;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -79,7 +92,7 @@ public class DB implements
 
 
     @Override
-    public User createUser(User user, byte[] salt, byte[] secret) {
+    public User createUser(User user) {
         try  (Connection connection = getConnection()){
             //Prepare a SQL statement from the DB connection
             PreparedStatement ps = connection.prepareStatement(
@@ -90,8 +103,8 @@ public class DB implements
             //Link variables to the SQL statement
             ps.setString(1, user.getName());
             ps.setTimestamp(2, java.sql.Timestamp.valueOf(user.getDate()));
-            ps.setBytes(3, salt);
-            ps.setBytes(4, secret);
+            ps.setBytes(3, user.getSalt());
+            ps.setBytes(4, user.getSecret());
 
             //Execute the SQL statement to update the DB
             ps.executeUpdate();
