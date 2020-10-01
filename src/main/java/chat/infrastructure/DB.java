@@ -79,17 +79,19 @@ public class DB implements
 
 
     @Override
-    public User createUser(User user) {
+    public User createUser(User user, byte[] salt, byte[] secret) {
         try  (Connection connection = getConnection()){
             //Prepare a SQL statement from the DB connection
             PreparedStatement ps = connection.prepareStatement(
-                    "INSERT INTO users (user_name, user_reg) VALUES (?, ?);",
+                    "INSERT INTO users (user_name, user_reg, salt, secret) VALUES (?, ?, ?, ?);",
                     Statement.RETURN_GENERATED_KEYS
             );
 
             //Link variables to the SQL statement
             ps.setString(1, user.getName());
             ps.setTimestamp(2, java.sql.Timestamp.valueOf(user.getDate()));
+            ps.setBytes(3, salt);
+            ps.setBytes(4, secret);
 
             //Execute the SQL statement to update the DB
             ps.executeUpdate();
@@ -173,7 +175,7 @@ public class DB implements
             //Search if there is a result from the DB execution
             if (rs.next()) {
                 //Create a new user from the DB execution result variables
-                user = new User(rs.getInt("user_id"), rs.getString("user_name"), rs.getTimestamp("user_reg").toLocalDateTime());
+                user = new User(rs.getInt("user_id"), rs.getString("user_name"), rs.getTimestamp("user_reg").toLocalDateTime(), rs.getBytes("salt"), rs.getBytes("secret"));
 
                 //Return the user
                 return user;

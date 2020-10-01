@@ -1,19 +1,16 @@
 package chat.entries;
 
 import chat.core.*;
-import chat.domain.*;
+import chat.api.*;
 import chat.infrastructure.DB;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.security.Timestamp;
 import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.NoSuchElementException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -30,6 +27,7 @@ public class Client extends Thread implements Closeable {
     private volatile Private_Message privateMessage;
     private volatile Subscription subscription;
     private volatile boolean clientUserValidated;
+    private final DBChat chat;
 
     public Client(Server server, Socket socket, String name) throws IOException, ClassNotFoundException {
         this.server = server;
@@ -44,6 +42,7 @@ public class Client extends Thread implements Closeable {
         this.privateMessage = null;
         this.subscription = null;
         this.clientUserValidated = false;
+        this.chat = new DBChat(db, db);
     }
 
     @Override
@@ -164,27 +163,27 @@ public class Client extends Thread implements Closeable {
             //Create new user or login
             doYouHaveAProfileSwitch();
 
-            //App continues if the user is not already logged in
-            if(clientUserValidated){
-                //Welcome message to the chat
-                clientHandler.welcomeMessageUser(user.getName());
+            //Welcome message to the chat
+            clientHandler.welcomeMessageUser(user.getName());
 
-                //Start Thread
-                t.start();
+            //Start Thread
+            t.start();
 
-                //Client unique id
-                System.out.println(t.getId());
+            //Client unique id
+            System.out.println(t.getId());
 
 
-                while (true) {
-                    String inbound = messageQueue.take();
-                    clientHandler.printString(inbound);
-                }
+            while (true) {
+                String inbound = messageQueue.take();
+                clientHandler.printString(inbound);
             }
-
 
         } catch (InterruptedException e) {
             System.out.println(name + " exited with: " + e.getMessage());
+        } catch (UserExists userExists) {
+            userExists.printStackTrace();
+        } catch (InvalidPassword invalidPassword) {
+            invalidPassword.printStackTrace();
         } finally {
             //We remove the client through the method close(), and close the socket
             try { close(); } catch (IOException e) {
@@ -263,7 +262,9 @@ public class Client extends Thread implements Closeable {
      *
      */
 
-    public void doYouHaveAProfileSwitch(){
+    public void doYouHaveAProfileSwitch() throws UserExists, InvalidPassword {
+        String password1, password2;
+
         //Profile Y/n to the client when connecting to the Thread
         String answer = clientHandler.doYouHaveAProfile();
 
@@ -272,8 +273,14 @@ public class Client extends Thread implements Closeable {
                 //Client input name
                 name = clientHandler.fetchName();
 
+                clientHandler.typePassword();
+                password1 = clientHandler.fetchPassword();
+
+
                 //Get user from DB
-                user = db.getUser(name);
+                user = chat.login(name, password1);
+//                user = db.getUser(name);
+
 
                 //Validate DB user_get_request
                 if(user == null){
@@ -300,11 +307,11 @@ public class Client extends Thread implements Closeable {
                 }
 
                 else {
+
+
                     //Login the user and set status to online
                     db.userLogin(user);
                     db.userOnline(user);
-
-                    clientUserValidated = true;
 
                     break;
                 }
@@ -329,20 +336,44 @@ public class Client extends Thread implements Closeable {
                     }
                 }
 
-                //Create timeStamp
-                LocalDateTime localTime = LocalDateTime.now();
+                clientHandler.typePassword();
+                password1 = clientHandler.fetchPassword();
+                clientHandler.typePasswordAgain();
+                password2 = clientHandler.fetchPassword();
 
-                //Crate user
-                user = new User(name, localTime);
+                if(password1.equals(password2)){
 
-                //Create user in DB
-                user = db.createUser(user);
+                    //Create timeStamp
+                    LocalDateTime localTime = LocalDateTime.now();
 
-                //Login the user and set status to online
-                db.userLogin(user);
-                db.userOnline(user);
+                    //Crate user
+                    user = chat.createUser(name, password1, localTime);
+//                    user = new User(name, localTime);
 
-                break;
+                    //Create user in DB
+//                    user = db.createUser(user);
+
+                    //Login the user and set status to online
+                    db.userLogin(user);
+                    db.userOnline(user);
+
+
+
+
+                    break;
+
+
+                } else {
+
+                    //Password do no match
+                    clientHandler.passwordsDoNotMatch();
+
+                    //Back to choose user
+                    doYouHaveAProfileSwitch();
+
+                }
+
+
 
             default:
                 //Unknown input => redirect to login/create user page

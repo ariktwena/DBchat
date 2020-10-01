@@ -29,8 +29,6 @@ CREATE TABLE subscriptions (
 ) ;
 
 
-INSERT INTO users VALUES (12,'John','2020-09-24 11:28:52.654622'),(13,'Bob','2020-09-24 11:37:16.886425'),(14,'Sam','2020-09-25 11:09:55.478327');
-
 
 -- Husk at update jeres database version.
 UPDATE properties

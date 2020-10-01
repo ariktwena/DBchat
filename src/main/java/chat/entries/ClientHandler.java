@@ -180,4 +180,22 @@ public class ClientHandler {
         out.println("Sorry... You are already logged in with this user! Bye..");
         out.flush();
     }
+
+    public void passwordsDoNotMatch() {
+        out.println("Sorry... Passwords do not match!");
+        out.flush();
+    }
+
+    public void typePassword() {
+        out.println("Type password.");
+        out.flush();
+    }
+    public void typePasswordAgain() {
+        out.println("Type password again.");
+        out.flush();
+    }
+
+    public String fetchPassword() {
+        return prompt();
+    }
 }
