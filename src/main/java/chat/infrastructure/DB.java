@@ -35,7 +35,7 @@ public class DB implements
 
 
     // Database version
-    private static final int version = 8;
+    private static final int version = 9;
 
     public DB() {
         if (getCurrentVersion() != getVersion()) {

@@ -112,10 +112,7 @@ public class Client extends Thread implements Closeable {
                     //Set new online timestamp
                     db.userOnline(user);
 
-
-
                 } else if (line.startsWith("!getP")) {
-
 
                     //Load the last 10 messages in the current room
                     messagesFromDB(db.get10NumberOfRoomPrivateMessages(room, user));
@@ -124,7 +121,7 @@ public class Client extends Thread implements Closeable {
                     //Set new online timestamp
                     db.userOnline(user);
 
-                }else if (line.startsWith("!exit")) {
+                } else if (line.startsWith("!exit")) {
 
                     //Client exits the room announcement
                     server.announceExitChat(this, room);
@@ -285,22 +282,22 @@ public class Client extends Thread implements Closeable {
 
                 }
 
-//                //if the user exists in the DB, BUT is not already logged in
-//                else if(server.isClientAlreadyLoggedIn(user.getName())){
-//
-//                    //User is already logged in and goodbye message
-//                    clientHandler.youAreAldreadyLoogedIn();
-//
-//                    try {
-//                        //Close client socket
-//                        close();
-//                    } catch (IOException e) {
-//                        e.printStackTrace();
-//                    }
-//
-//                    //Break from the thread (else error)
-//                    break;
-//                }
+                //if the user exists in the DB, BUT is not already logged in
+                else if(server.isClientAlreadyLoggedIn(user.getName())){
+
+                    //User is already logged in and goodbye message
+                    clientHandler.youAreAldreadyLoogedIn();
+
+                    try {
+                        //Close client socket
+                        close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    //Break from the thread (else error)
+                    break;
+                }
 
                 else {
                     //Login the user and set status to online
