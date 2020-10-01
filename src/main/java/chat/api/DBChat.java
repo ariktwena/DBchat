@@ -1,10 +1,15 @@
 package chat.api;
 
+import chat.core.Room;
+import chat.core.Subscription;
 import chat.core.User;
+import chat.domain.room.InvalidRoomName;
+import chat.domain.room.RoomAlreadyExistsInDB;
 import chat.domain.user.*;
 import chat.infrastructure.DB;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -99,22 +104,57 @@ public class DBChat {
         }
     }
 
-
     private synchronized boolean userAlreadyLoggedIn(User user){
-        int count = 0;
-
         for (User curretUser : activeUsers){
             if(curretUser.equals(user)){
-                count++;
+                return true;
             }
         }
+        return false;
+    }
 
-        if(count <= 1){
-            return false;
+
+    public synchronized Room getRoomFromDB(String roomName){
+
+        return db.getRoom(roomName);
+
+    }
+
+    public synchronized Room createRoomInSystemAndDB(String roomName) throws RoomAlreadyExistsInDB, InvalidRoomName {
+
+        if(roomExistsInDB(roomName)){
+
+            throw new RoomAlreadyExistsInDB();
+
+        } else if(roomName.equalsIgnoreCase("create")){
+
+            throw new InvalidRoomName();
+
         } else {
-            return true;
+
+            //We create a room and also create the room in the DB. Thereafter we set and return the room.
+            Room room = new Room(roomName);
+            room = db.createRoom(room);
+
+            return room;
+
         }
 
     }
+
+    private synchronized boolean roomExistsInDB (String roomName){
+        if(!db.roomExistsInDB(roomName)){
+            return false;
+        }
+        return true;
+    }
+
+    public synchronized ArrayList<String> getListOfAllSubscribingUsersFromARoom(Subscription subscriptionToRoom){
+
+        ArrayList<String> subscriptionUserNames = db.getAllSubscribingUsersFromARoom(subscriptionToRoom);
+
+        return subscriptionUserNames;
+    }
+
 
 }

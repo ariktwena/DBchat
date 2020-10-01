@@ -2,6 +2,8 @@ package chat.entries;
 
 import chat.core.*;
 import chat.api.*;
+import chat.domain.room.InvalidRoomName;
+import chat.domain.room.RoomAlreadyExistsInDB;
 import chat.domain.user.InvalidPassword;
 import chat.domain.user.InvalidUsernameOrPassword;
 import chat.domain.user.UserAlreadyLoggedIn;
@@ -30,6 +32,7 @@ public class Client extends Thread implements Closeable {
     private volatile Message message;
     private volatile Private_Message privateMessage;
     private volatile Subscription subscription;
+    private volatile boolean userIsValidatedForLoggin;
 
     private final DBChat api;
 
@@ -46,6 +49,7 @@ public class Client extends Thread implements Closeable {
         this.privateMessage = null;
         this.subscription = null;
         this.api = api;
+        this.userIsValidatedForLoggin = false;
     }
 
     @Override
@@ -64,20 +68,22 @@ public class Client extends Thread implements Closeable {
             //Create new user or login
             doYouHaveAProfileSwitch();
 
-            //Welcome message to the chat
-            clientHandler.welcomeMessageUser(user.getName());
+            if(userIsValidatedForLoggin){
+                //Welcome message to the chat
+                clientHandler.welcomeMessageUser(user.getName());
 
-            //Start Thread
-            t.start();
+                //Start Thread
+                t.start();
 
-            //Client unique id
-            System.out.println(t.getId());
+                //Client unique id
+                System.out.println(t.getId());
 
-
-            while (true) {
-                String inbound = messageQueue.take();
-                clientHandler.printString(inbound);
+                while (true) {
+                    String inbound = messageQueue.take();
+                    clientHandler.printString(inbound);
+                }
             }
+
 
         } catch (InterruptedException e) {
             System.out.println(name + " exited with: " + e.getMessage());
@@ -215,11 +221,9 @@ public class Client extends Thread implements Closeable {
 
         clientHandler.roomListMessage(room.getName());
 
-//        for(int i = 0 ; i < db.getAllSubscribingUsersFromARoom(subscription).size() ; i++){
-//            clientHandler.printRoomUserName(db.getAllSubscribingUsersFromARoom(subscription).get(i));
-//        }
+        ArrayList<String> subscriptionUserNames = api.getListOfAllSubscribingUsersFromARoom(subscription);
 
-        for(String name : db.getAllSubscribingUsersFromARoom(subscription)){
+        for(String name : subscriptionUserNames){
             clientHandler.printRoomUserName(name);
         }
 
@@ -295,6 +299,8 @@ public class Client extends Thread implements Closeable {
                 try {
                     user = api.loginValidation(name, password1);
 
+                    userIsValidatedForLoggin = true;
+
                     break;
 
                 } catch(NullPointerException | InvalidUsernameOrPassword e){
@@ -319,47 +325,6 @@ public class Client extends Thread implements Closeable {
                 break;
 
 
-                /**
-                 * Old code
-                 */
-//                //Check the username and password that is provided, and the user from DB
-//                user = api.loginValidation(name, password1);
-////                user = db.getUser(name);
-//
-//                //Validate DB user_get_request
-//                if(user == null){
-//                    clientHandler.unknownUsername();
-//                    doYouHaveAProfileSwitch();
-//
-//                }
-//
-//                //if the user exists in the DB, BUT is not already logged in
-//                else if(server.isClientAlreadyLoggedIn(user.getName())){
-//
-//                    //User is already logged in and goodbye message
-//                    clientHandler.youAreAldreadyLoogedIn();
-//
-//                    try {
-//                        //Close client socket
-//                        close();
-//                    } catch (IOException e) {
-//                        e.printStackTrace();
-//                    }
-//
-//                    //Break from the thread (else error)
-//                    break;
-//                }
-//
-//                else {
-//
-//
-//                    //Login the user and set status to online
-//                    db.userLogin(user);
-//                    db.userOnline(user);
-//
-//                    break;
-//                }
-
             case "n":
                 //Client new input name
                 name = clientHandler.fetchName();
@@ -377,8 +342,7 @@ public class Client extends Thread implements Closeable {
                 try {
                     user = api.createUserInSystemAndDB(name, password1, password2, localTime);
 
-                    db.userLogin(user);
-                    db.userOnline(user);
+                    userIsValidatedForLoggin = true;
 
                     break;
 
@@ -456,37 +420,32 @@ public class Client extends Thread implements Closeable {
         //We check if the client input matches the list of room names array
         int roomExists = listOfRoomNames.lastIndexOf(answer);
 
-
         if(roomExists > -1){
             //If the room exist we fetch it from the DB and return it
-            room = db.getRoom(answer);
+            room = api.getRoomFromDB(answer);
 
         } else {
             //If the room doesn't exist, we check the client input for [Create]
             if (answer.equalsIgnoreCase("create")){
 
-                //Client names the new room
-                String roomName = clientHandler.whatIsTheNewRoomsName();
+                while(true) {
+                    //Client names the new room
+                    String roomName = clientHandler.whatIsTheNewRoomsName();
 
-                //We loop the name giving of the room name until we get a uniq name
-                while(true){
-                    if(!db.roomExistsInDB(roomName)){
+                    try {
+                        //Create the new room i system/DB or throw exception
+                        room = api.createRoomInSystemAndDB(roomName);
                         break;
-                    } else if (roomName.equalsIgnoreCase("create")){
-                        //Client names the new room
-                        clientHandler.roomNameInvalid();
-                        roomName = clientHandler.whatIsTheNewRoomsName();
-                    } else {
-                        //Client names the new room
+
+                    } catch (RoomAlreadyExistsInDB e) {
+
                         clientHandler.roomAlreadyExists();
-                        roomName = clientHandler.whatIsTheNewRoomsName();
+
+                    } catch (InvalidRoomName e) {
+
+                        clientHandler.roomNameInvalid();
                     }
                 }
-
-                //We create a room and also create the room in the DB. Thereafter we set and return the room.
-                room = new Room(roomName);
-                room = db.createRoom(room);
-
             } else {
 
                 clientHandler.UnknownRoomNameOrInput();
