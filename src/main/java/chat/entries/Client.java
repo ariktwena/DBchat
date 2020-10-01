@@ -1,7 +1,11 @@
 package chat.entries;
 
+import chat.api.DBChat;
 import chat.core.*;
 import chat.domain.*;
+import chat.domain.user.InvalidPassword;
+import chat.domain.user.UserAlreadyLoggedIn;
+import chat.domain.user.UserNotFound;
 import chat.infrastructure.DB;
 
 import java.io.Closeable;
@@ -24,6 +28,7 @@ public class Client extends Thread implements Closeable {
     private final ClientHandler clientHandler;
     private final BlockingQueue<String> messageQueue;
     private final DB db;
+    private final DBChat api;
     private volatile Room room;
     private volatile User user;
     private volatile Message message;
@@ -31,13 +36,14 @@ public class Client extends Thread implements Closeable {
     private volatile Subscription subscription;
     private volatile boolean clientUserValidated;
 
-    public Client(Server server, Socket socket, String name) throws IOException, ClassNotFoundException {
+    public Client(Server server, Socket socket, String name, DBChat api) throws IOException, ClassNotFoundException {
         this.server = server;
         this.socket = socket;
         this.clientHandler = new ClientHandler(socket.getInputStream(), new PrintWriter(socket.getOutputStream()));
         this.name = name;
         this.messageQueue = new LinkedBlockingQueue<>();
         this.db = new DB();
+        this.api = api;
         this.room = null;
         this.user = null;
         this.message = null;
@@ -46,123 +52,125 @@ public class Client extends Thread implements Closeable {
         this.clientUserValidated = false;
     }
 
+    private void handelInput() {
+        while (true) {
+//                clientHandler.showPrompt();
+            String line = clientHandler.waitForLine();
+
+
+            if (line.startsWith("!lobby")) {
+
+                //Client exit the room announcement
+                server.announceExitChat(this, room);
+
+                //Client returns to the lobby
+                clientHandler.returnToLobby(room.getName());
+
+                //Reset room variable
+                room = null;
+
+                //reset message queue
+                messageQueue.clear();
+
+                chooseCreateEnterRoomAndGetOldMessages();
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+            } else if (line.startsWith("!help")) {
+
+                //Show the help options to the client
+                clientHandler.help();
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+            } else if (line.startsWith("!list")) {
+
+                //Print a user list of the current room
+                printUserListFromARoom();
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+            } else if (line.startsWith("!room")) {
+
+                //Show room name to the client
+                clientHandler.roomName(user.getName(), room.getName());
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+            } else if (line.startsWith("!sendP")) {
+
+                //Send private message
+                try {
+                    sendAPrivateMessage();
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+            } else if (line.startsWith("!getP")) {
+
+                //Load the last 10 messages in the current room
+                messagesFromDB(db.get10NumberOfRoomPrivateMessages(room, user));
+
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+            } else if (line.startsWith("!exit")) {
+
+                //Client exits the room announcement
+                server.announceExitChat(this, room);
+
+                try {
+                    //Close client socket
+                    close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                //Break from the thread (else error)
+                break;
+
+            } else {
+
+                //Create timestamp
+                LocalDateTime localTime = LocalDateTime.now();
+
+                //Create message
+                message = new Message(line, localTime, user, room);
+
+                //Save message to DB
+                message = db.createMessage(message);
+
+                //Set new online timestamp
+                db.userOnline(user);
+
+                try {
+                    //Broadcast message to other clients
+                    server.broadcast(message);
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
     @Override
     public void run() {
         Thread t = new Thread(() -> {
-
             chooseCreateEnterRoomAndGetOldMessages();
-
-            while (true) {
-//                clientHandler.showPrompt();
-                String line = clientHandler.waitForLine();
-
-
-                if (line.startsWith("!lobby")) {
-
-                    //Client exit the room announcement
-                    server.announceExitChat(this, room);
-
-                    //Client returns to the lobby
-                    clientHandler.returnToLobby(room.getName());
-
-                    //Reset room variable
-                    room = null;
-
-                    //reset message queue
-                    messageQueue.clear();
-
-                    chooseCreateEnterRoomAndGetOldMessages();
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                } else if (line.startsWith("!help")) {
-
-                    //Show the help options to the client
-                    clientHandler.help();
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                } else if (line.startsWith("!list")) {
-
-                    //Print a user list of the current room
-                    printUserListFromARoom();
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                } else if (line.startsWith("!room")) {
-
-                    //Show room name to the client
-                    clientHandler.roomName(user.getName(), room.getName());
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                } else if (line.startsWith("!sendP")) {
-
-                    //Send private message
-                    try {
-                        sendAPrivateMessage();
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                } else if (line.startsWith("!getP")) {
-
-                    //Load the last 10 messages in the current room
-                    messagesFromDB(db.get10NumberOfRoomPrivateMessages(room, user));
-
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                } else if (line.startsWith("!exit")) {
-
-                    //Client exits the room announcement
-                    server.announceExitChat(this, room);
-
-                    try {
-                        //Close client socket
-                        close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                    //Break from the thread (else error)
-                    break;
-
-                } else {
-
-                    //Create timestamp
-                    LocalDateTime localTime = LocalDateTime.now();
-
-                    //Create message
-                    message = new Message(line, localTime, user, room);
-
-                    //Save message to DB
-                    message = db.createMessage(message);
-
-                    //Set new online timestamp
-                    db.userOnline(user);
-
-                    try {
-                        //Broadcast message to other clients
-                        server.broadcast(message);
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
+            handelInput();
         });
-        try {
 
+        try {
             //Create new user or login
-            doYouHaveAProfileSwitch();
+            user = doYouHaveAProfileSwitch();
 
             //App continues if the user is not already logged in
             if(clientUserValidated){
@@ -175,18 +183,20 @@ public class Client extends Thread implements Closeable {
                 //Client unique id
                 System.out.println(t.getId());
 
-
                 while (true) {
                     String inbound = messageQueue.take();
                     clientHandler.printString(inbound);
                 }
             }
 
-
         } catch (InterruptedException e) {
             System.out.println(name + " exited with: " + e.getMessage());
         } finally {
             //We remove the client through the method close(), and close the socket
+            if (user != null) {
+                api.logoff(user);
+            }
+
             try { close(); } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -207,8 +217,8 @@ public class Client extends Thread implements Closeable {
 
         clientHandler.roomListMessage(room.getName());
 
-        for(int i = 0 ; i < db.getAllSubscribingUsersFromARoom(subscription).size() ; i++){
-            clientHandler.printRoomUserName(db.getAllSubscribingUsersFromARoom(subscription).get(i));
+        for(String name : db.getAllSubscribingUsersFromARoom(subscription)) {
+            clientHandler.printRoomUserName(name);
         }
     }
 
@@ -263,7 +273,7 @@ public class Client extends Thread implements Closeable {
      *
      */
 
-    public void doYouHaveAProfileSwitch(){
+    public User doYouHaveAProfileSwitch(){
         //Profile Y/n to the client when connecting to the Thread
         String answer = clientHandler.doYouHaveAProfile();
 
@@ -271,44 +281,25 @@ public class Client extends Thread implements Closeable {
             case "Y":
                 //Client input name
                 name = clientHandler.fetchName();
-
-                //Get user from DB
-                user = db.getUser(name);
-
-                //Validate DB user_get_request
-                if(user == null){
-                    clientHandler.unknownUsername();
+                try {
+                    user = api.login(name, null);
+                    return user;
+                } catch (UserNotFound userNotFound) {
+                    // user all ready exist
                     doYouHaveAProfileSwitch();
-
-                }
-
-                //if the user exists in the DB, BUT is not already logged in
-                else if(server.isClientAlreadyLoggedIn(user.getName())){
-
-                    //User is already logged in and goodbye message
+                } catch (InvalidPassword invalidPassword) {
+                    //
+                    invalidPassword.printStackTrace();
+                } catch (UserAlreadyLoggedIn userAlreadyLoggedIn) {
                     clientHandler.youAreAldreadyLoogedIn();
-
                     try {
                         //Close client socket
                         close();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-
-                    //Break from the thread (else error)
-                    break;
                 }
-
-                else {
-                    //Login the user and set status to online
-                    db.userLogin(user);
-                    db.userOnline(user);
-
-                    clientUserValidated = true;
-
-                    break;
-                }
-
+                return doYouHaveAProfileSwitch();
             case "n":
                 //Client new input name
                 name = clientHandler.fetchName();
@@ -341,15 +332,13 @@ public class Client extends Thread implements Closeable {
                 //Login the user and set status to online
                 db.userLogin(user);
                 db.userOnline(user);
-
-                break;
-
+                return user;
             default:
                 //Unknown input => redirect to login/create user page
                 clientHandler.unknownInput();
 
                 //Restart the login process
-                doYouHaveAProfileSwitch();
+                return doYouHaveAProfileSwitch();
         }
     }
 
@@ -468,6 +457,8 @@ public class Client extends Thread implements Closeable {
                 "socket=" + socket +
                 '}';
     }
+
+
 
     @Override
     public void close() throws IOException {
