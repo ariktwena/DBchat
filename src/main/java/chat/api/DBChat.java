@@ -108,20 +108,20 @@ public class DBChat {
     }
 
     private synchronized boolean userAlreadyLoggedIn(User user){
-        for (User curretUser : activeUsers){
-            if(curretUser.equals(user)){
-                return true;
-            }
-        }
-        return false;
+//        if(activeUsers.contains(user)){
+//            return true;
+//        }
+//        return false;
+        return activeUsers.contains(user);
     }
 
-    public synchronized void removeUserFromactiveUsers(User user){
-        for (User curretUser : activeUsers){
-            if(curretUser.equals(user)){
-                activeUsers.remove(user);
-            }
-        }
+    public synchronized void removeUserFromActiveUsers(User user){
+//        for (User curretUser : activeUsers){
+//            if(curretUser.equals(user)){
+//                activeUsers.remove(user);
+//            }
+//        }
+        activeUsers.remove(user);
     }
 
     public synchronized Room getRoomFromDB(String roomName){

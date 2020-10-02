@@ -96,7 +96,7 @@ public class Client extends Thread implements Closeable {
         } catch (InterruptedException e) {
             System.out.println(name + " exited with: " + e.getMessage());
         } finally {
-            api.removeUserFromactiveUsers(user);
+            api.removeUserFromActiveUsers(user);
             //We remove the client through the method close(), and close the socket
             try { close(); } catch (IOException e) {
                 e.printStackTrace();
