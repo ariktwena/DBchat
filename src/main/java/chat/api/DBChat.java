@@ -124,6 +124,10 @@ public class DBChat {
         activeUsers.remove(user);
     }
 
+    public synchronized void setOnlineStamp(User user){
+        usersFromSource.userOnline(user);
+    }
+
     public synchronized Room getRoomFromDB(String roomName){
 
         return roomsFromSource.getRoom(roomName);

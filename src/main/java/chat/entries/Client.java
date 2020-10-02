@@ -118,6 +118,9 @@ public class Client extends Thread implements Closeable {
         while (true) {
             String line = clientHandler.waitForLine();
 
+            //Set new online timestamp
+            api.setOnlineStamp(user);
+
             if (line.startsWith("!lobby")) {
 
                 //Client exit the room announcement
@@ -134,32 +137,21 @@ public class Client extends Thread implements Closeable {
 
                 chooseCreateEnterRoomAndGetOldMessages();
 
-                //Set new online timestamp
-                db.userOnline(user);
-
             } else if (line.startsWith("!help")) {
 
                 //Show the help options to the client
                 clientHandler.help();
-
-                //Set new online timestamp
-                db.userOnline(user);
 
             } else if (line.startsWith("!list")) {
 
                 //Print a user list of the current room
                 printUserListFromARoom();
 
-                //Set new online timestamp
-                db.userOnline(user);
-
             } else if (line.startsWith("!room")) {
 
                 //Show room name to the client
                 clientHandler.roomName(user.getName(), room.getName());
 
-                //Set new online timestamp
-                db.userOnline(user);
 
             } else if (line.startsWith("!sendP")) {
 
@@ -170,17 +162,10 @@ public class Client extends Thread implements Closeable {
                     e.printStackTrace();
                 }
 
-                //Set new online timestamp
-                db.userOnline(user);
-
             } else if (line.startsWith("!getP")) {
 
                 //Load the last 10 messages in the current room
                 messagesFromDB(db.get10NumberOfRoomPrivateMessages(room, user));
-
-
-                //Set new online timestamp
-                db.userOnline(user);
 
             } else if (line.startsWith("!exit")) {
 
@@ -207,9 +192,6 @@ public class Client extends Thread implements Closeable {
 
                 //Save message to DB
                 message = db.createMessage(message);
-
-                //Set new online timestamp
-                db.userOnline(user);
 
                 try {
                     //Broadcast message to other clients
