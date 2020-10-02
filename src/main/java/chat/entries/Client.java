@@ -27,7 +27,6 @@ public class Client extends Thread implements Closeable {
     private String name;
     private final ClientHandler clientHandler;
     private final BlockingQueue<String> messageQueue;
-    private final DB db;
     private volatile Room room;
     private volatile User user;
     private volatile Message message;
@@ -43,7 +42,6 @@ public class Client extends Thread implements Closeable {
         this.clientHandler = new ClientHandler(socket.getInputStream(), new PrintWriter(socket.getOutputStream()));
         this.name = name;
         this.messageQueue = new LinkedBlockingQueue<>();
-        this.db = new DB();
         this.room = null;
         this.user = null;
         this.message = null;
@@ -62,9 +60,12 @@ public class Client extends Thread implements Closeable {
 
                 //Handle the rest of the user inputs through a loop
                 inputHandlerLoop();
+
             }catch(NoSuchElementException e){
+                //We do nothing for this exception, just catch it
 
             } finally {
+                //We send a final message to the messageQueue not to get an exception
                 this.messageQueue.add("closeThisSocketWhitLongCode1234567890Crypt");
             }
         });
@@ -80,22 +81,23 @@ public class Client extends Thread implements Closeable {
                 //Start Thread
                 t.start();
 
-                //Client unique id
-                System.out.println(t.getId());
-
                 while (true) {
+                    //We get the inbound message
                     String inbound = messageQueue.take();
+
+                    //We breake the loop if the message is as followed, not to get an exection
                     if(inbound.equals("closeThisSocketWhitLongCode1234567890Crypt")){
                         break;
                     }
+                    //We broadcast the message
                     clientHandler.printString(inbound);
                 }
             }
 
-
         } catch (InterruptedException e) {
             System.out.println(name + " exited with: " + e.getMessage());
         } finally {
+            //We remove the client/user from the activeList
             api.removeUserFromActiveUsers(user);
             //We remove the client through the method close(), and close the socket
             try { close(); } catch (IOException e) {
@@ -116,12 +118,12 @@ public class Client extends Thread implements Closeable {
 
     private void inputHandlerLoop(){
         while (true) {
-            String line = clientHandler.waitForLine();
+            String messageInput = clientHandler.waitForLine();
 
             //Set new online timestamp
             api.setOnlineStamp(user);
 
-            if (line.startsWith("!lobby")) {
+            if (messageInput.startsWith("!lobby")) {
 
                 //Client exit the room announcement
                 server.announceExitChat(this, room);
@@ -137,23 +139,23 @@ public class Client extends Thread implements Closeable {
 
                 chooseCreateEnterRoomAndGetOldMessages();
 
-            } else if (line.startsWith("!help")) {
+            } else if (messageInput.startsWith("!help")) {
 
                 //Show the help options to the client
                 clientHandler.help();
 
-            } else if (line.startsWith("!list")) {
+            } else if (messageInput.startsWith("!list")) {
 
                 //Print a user list of the current room
                 printUserListFromARoom();
 
-            } else if (line.startsWith("!room")) {
+            } else if (messageInput.startsWith("!room")) {
 
                 //Show room name to the client
                 clientHandler.roomName(user.getName(), room.getName());
 
 
-            } else if (line.startsWith("!sendP")) {
+            } else if (messageInput.startsWith("!sendP")) {
 
                 //Send private message
                 try {
@@ -162,12 +164,12 @@ public class Client extends Thread implements Closeable {
                     e.printStackTrace();
                 }
 
-            } else if (line.startsWith("!getP")) {
+            } else if (messageInput.startsWith("!getP")) {
 
                 //Load the last 10 messages in the current room
-                messagesFromDB(db.get10NumberOfRoomPrivateMessages(room, user));
+                messagesFromDB(api.get10NumberOfRoomPrivateMessages(room, user));
 
-            } else if (line.startsWith("!exit")) {
+            } else if (messageInput.startsWith("!exit")) {
 
                 //Client exits the room announcement
                 server.announceExitChat(this, room);
@@ -184,18 +186,12 @@ public class Client extends Thread implements Closeable {
 
             } else {
 
-                //Create timestamp
-                LocalDateTime localTime = LocalDateTime.now();
-
-                //Create message
-                message = new Message(line, localTime, user, room);
-
-                //Save message to DB
-                message = db.createMessage(message);
+                message = api.createMessage(messageInput, user, room);
 
                 try {
                     //Broadcast message to other clients
                     server.broadcast(message);
+
                 } catch (ParseException e) {
                     e.printStackTrace();
                 }
@@ -233,8 +229,11 @@ public class Client extends Thread implements Closeable {
         clientHandler.whoDoYouWantToSendAPrivateMessageTo();
         String whoToSendTo = clientHandler.waitForLine();
 
+        //ArrayList of all subscribers to a room
+        ArrayList<String> allSubscribersToARoom = api.getListOfAllSubscribingUsersFromARoom(subscription);
+
         //Check if input is a valid user to send to
-        int recipientExists = db.getAllSubscribingUsersFromARoom(subscription).lastIndexOf(whoToSendTo);
+        int recipientExists = allSubscribersToARoom.lastIndexOf(whoToSendTo);
 
         if(recipientExists > -1){
 
@@ -242,17 +241,7 @@ public class Client extends Thread implements Closeable {
             clientHandler.writeThePrivateMessage();
             String thePrivateMessage = clientHandler.waitForLine();
 
-            //Create timestamp
-            LocalDateTime localTime = LocalDateTime.now();
-
-            //Create message
-            privateMessage = new Private_Message(thePrivateMessage, localTime, user, room, whoToSendTo);
-
-            //Get recipient id
-            int recipient_id = db.getUserId(whoToSendTo);
-
-            //Save message to DB
-            privateMessage = db.createPrivateMessage(privateMessage, recipient_id);
+            privateMessage = api.createPrivateMessage(thePrivateMessage, user, room, whoToSendTo);
 
             //Send private message
             server.privateBroadcast(privateMessage);
@@ -382,14 +371,14 @@ public class Client extends Thread implements Closeable {
         server.announceName(this, room);
 
         //Load the last 10 messages in the current room
-        messagesFromDB(db.getThe10LastRoomMessages(room, user));
+        messagesFromDB(api.getThe10LastRoomMessages(room, user));
     }
 
 
     private ArrayList<String> showAvailableRooms(){
 
         ArrayList<String> listOfRoomNames = new ArrayList<>();
-        listOfRoomNames = db.getAllRoomNames();
+        listOfRoomNames = api.getAvailableRooNames();
 
         if(listOfRoomNames.size() == 0 || listOfRoomNames.isEmpty()){
             clientHandler.noRoomAvailable();
@@ -447,14 +436,7 @@ public class Client extends Thread implements Closeable {
 
     private void subscribeToRoom() {
 
-        //Create timestamp
-        LocalDateTime localTime = LocalDateTime.now();
-
-        //Create new subscription
-        subscription = new Subscription(localTime, user, room);
-
-        //Add subscription to DB
-        db.createSubscriptionForRoom(subscription);
+        subscription = api.createSubscription(user, room);
     }
 
     public String getUserName() {

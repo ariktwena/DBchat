@@ -1,8 +1,6 @@
 package chat.api;
 
-import chat.core.Room;
-import chat.core.Subscription;
-import chat.core.User;
+import chat.core.*;
 import chat.domain.messages.MessageService;
 import chat.domain.privatemessages.PrivateMessageService;
 import chat.domain.room.InvalidRoomName;
@@ -169,6 +167,66 @@ public class DBChat {
 
         return subscriptionUserNames;
     }
+
+    public synchronized ArrayList<String> getAvailableRooNames(){
+        return roomsFromSource.getAllRoomNames();
+    }
+
+    public synchronized Message createMessage (String messageInput, User user, Room room){
+
+        //Create timestamp
+        LocalDateTime localTime = LocalDateTime.now();
+
+        //Create message
+        Message message = new Message(messageInput, localTime, user, room);
+
+        //Save message to DB
+        message = messagesFromSource.createMessage(message);
+
+        return message;
+
+    }
+
+    public synchronized Private_Message createPrivateMessage (String thePrivateMessage, User user, Room room, String whoToSendTo){
+
+        //Create timestamp
+        LocalDateTime localTime = LocalDateTime.now();
+
+        //Create message
+        Private_Message privateMessage = new Private_Message(thePrivateMessage, localTime, user, room, whoToSendTo);
+
+        //Get recipient id
+        int recipient_id = usersFromSource.getUserId(whoToSendTo);
+
+        //Save message to DB
+        privateMessage = privateMessagesFromSource.createPrivateMessage(privateMessage, recipient_id);
+
+        return privateMessage;
+
+    }
+
+    public synchronized ArrayList<String> getThe10LastRoomMessages (Room room, User user){
+        return messagesFromSource.getThe10LastRoomMessages(room, user);
+    }
+
+    public synchronized ArrayList<String> get10NumberOfRoomPrivateMessages (Room room, User user){
+        return privateMessagesFromSource.get10NumberOfRoomPrivateMessages(room, user);
+    }
+
+    public synchronized Subscription createSubscription(User user, Room room){
+
+        //Create timestamp
+        LocalDateTime localTime = LocalDateTime.now();
+
+        //Create new subscription
+        Subscription subscription = new Subscription(localTime, user, room);
+
+        //Add subscription to DB
+        subscription = subscriptionsFromSource.createSubscriptionForRoom(subscription);
+
+        return subscription;
+    }
+
 
 
 }
