@@ -198,4 +198,9 @@ public class ClientHandler {
     public String fetchPassword() {
         return prompt();
     }
+
+    public void unknownUsernameOrPassword() {
+        out.println("Sorry, we couldn't identify your username or password");
+        out.flush();
+    }
 }

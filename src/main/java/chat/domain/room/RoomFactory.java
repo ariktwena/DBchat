@@ -1,4 +1,4 @@
-package chat.domain;
+package chat.domain.room;
 
 import chat.core.Room;
 import chat.infrastructure.DB;

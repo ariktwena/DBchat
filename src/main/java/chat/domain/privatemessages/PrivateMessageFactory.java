@@ -1,4 +1,4 @@
-package chat.domain;
+package chat.domain.privatemessages;
 
 import chat.core.Message;
 import chat.core.Private_Message;

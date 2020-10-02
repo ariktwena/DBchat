@@ -1,4 +1,4 @@
-package chat.domain;
+package chat.domain.subscription;
 
 import chat.core.Room;
 import chat.core.Subscription;
