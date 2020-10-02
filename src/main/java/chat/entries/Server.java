@@ -15,7 +15,7 @@ import java.util.List;
 public class Server extends Thread {
     private final ServerSocket socket;
     private final List<Client> clients;
-    private final DBChat api = new DBChat(new DB());
+    private final DBChat api = new DBChat(new DB(), new DB(), new DB(), new DB(), new DB());
 
     //Constructor with full information
     public Server(ServerSocket socket, List<Client> clients) {

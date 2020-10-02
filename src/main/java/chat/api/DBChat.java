@@ -3,8 +3,12 @@ package chat.api;
 import chat.core.Room;
 import chat.core.Subscription;
 import chat.core.User;
+import chat.domain.messages.MessageService;
+import chat.domain.privatemessages.PrivateMessageService;
 import chat.domain.room.InvalidRoomName;
 import chat.domain.room.RoomAlreadyExistsInDB;
+import chat.domain.room.RoomService;
+import chat.domain.subscription.SubscriptionService;
 import chat.domain.user.*;
 import chat.infrastructure.DB;
 
@@ -15,26 +19,25 @@ import java.util.Set;
 
 public class DBChat {
 
-//    private final UserService users;
-//    private final RoomService rooms;
-//    private final MessageService messages;
-//    private final PrivateMessageService privateMessages;
-//    private final SubscriptionService subscriptions;
-    private final DB db;
+    private final UserService usersFromSource;
+    private final RoomService roomsFromSource;
+    private final MessageService messagesFromSource;
+    private final PrivateMessageService privateMessagesFromSource;
+    private final SubscriptionService subscriptionsFromSource;
+//    private final DB db;
     private volatile Set<User> activeUsers = new HashSet<>();
 
-//    public DBChat(UserRepo users, RoomService rooms, MessageService messages, PrivateMessageService privateMessages, SubscriptionService subscriptions, DB db) {
-//        this.users = users;
-//        this.rooms = rooms;
-//        this.messages = messages;
-//        this.privateMessages = privateMessages;
-//        this.subscriptions = subscriptions;
+    public DBChat(UserService users, RoomService rooms, MessageService messages, PrivateMessageService privateMessages, SubscriptionService subscriptions) {
+        this.usersFromSource = users;
+        this.roomsFromSource = rooms;
+        this.messagesFromSource = messages;
+        this.privateMessagesFromSource = privateMessages;
+        this.subscriptionsFromSource = subscriptions;
+    }
+
+//    public DBChat(DB db) {
 //        this.db = db;
 //    }
-
-    public DBChat(DB db) {
-        this.db = db;
-    }
 
 
     public synchronized User createUserInSystemAndDB(String name, String password1, String password2, LocalDateTime date) throws InvalidPassword, UserExists {
@@ -45,7 +48,7 @@ public class DBChat {
         //Create user
 
         //Validate user input
-        if(db.userAldreadyExistsInDB(name)){
+        if(usersFromSource.userAldreadyExistsInDB(name)){
             throw new UserExists();
 
         } else if (!password1.equals(password2)){
@@ -56,14 +59,14 @@ public class DBChat {
             User user = new User(name, date, salt, secret);
 
             //Save/create the user in the DB and return the users (No longer id -1)
-            user = db.createUser(user);
+            user = usersFromSource.createUser(user);
 
             //Add user to hashMap
             activeUsers.add(user);
 
             //Log the user to the DB
-            db.userLogin(user);
-            db.userOnline(user);
+            usersFromSource.userLogin(user);
+            usersFromSource.userOnline(user);
 
             return user;
         }
@@ -72,7 +75,7 @@ public class DBChat {
 
     public synchronized User loginValidation(String name, String password) throws NullPointerException, UserAlreadyLoggedIn, InvalidUsernameOrPassword {
         //Get user from the DB with a specific name
-        User user = db.getUser(name);
+        User user = usersFromSource.getUser(name);
 
 
         //Username is null => no user was found in DB
@@ -96,8 +99,8 @@ public class DBChat {
             activeUsers.add(user);
 
             //Login the user and set status to online
-            db.userLogin(user);
-            db.userOnline(user);
+            usersFromSource.userLogin(user);
+            usersFromSource.userOnline(user);
 
             //Return user if password is validated
             return user;
@@ -116,7 +119,7 @@ public class DBChat {
 
     public synchronized Room getRoomFromDB(String roomName){
 
-        return db.getRoom(roomName);
+        return roomsFromSource.getRoom(roomName);
 
     }
 
@@ -134,7 +137,7 @@ public class DBChat {
 
             //We create a room and also create the room in the DB. Thereafter we set and return the room.
             Room room = new Room(roomName);
-            room = db.createRoom(room);
+            room = roomsFromSource.createRoom(room);
 
             return room;
 
@@ -143,7 +146,7 @@ public class DBChat {
     }
 
     private synchronized boolean roomExistsInDB (String roomName){
-        if(!db.roomExistsInDB(roomName)){
+        if(!roomsFromSource.roomExistsInDB(roomName)){
             return false;
         }
         return true;
@@ -151,7 +154,7 @@ public class DBChat {
 
     public synchronized ArrayList<String> getListOfAllSubscribingUsersFromARoom(Subscription subscriptionToRoom){
 
-        ArrayList<String> subscriptionUserNames = db.getAllSubscribingUsersFromARoom(subscriptionToRoom);
+        ArrayList<String> subscriptionUserNames = subscriptionsFromSource.getAllSubscribingUsersFromARoom(subscriptionToRoom);
 
         return subscriptionUserNames;
     }
