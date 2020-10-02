@@ -116,6 +116,13 @@ public class DBChat {
         return false;
     }
 
+    public synchronized void removeUserFromactiveUsers(User user){
+        for (User curretUser : activeUsers){
+            if(curretUser.equals(user)){
+                activeUsers.remove(user);
+            }
+        }
+    }
 
     public synchronized Room getRoomFromDB(String roomName){
 

@@ -17,6 +17,7 @@ import java.net.Socket;
 import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.NoSuchElementException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -55,13 +56,17 @@ public class Client extends Thread implements Closeable {
     @Override
     public void run() {
         Thread t = new Thread(() -> {
+            try {
+                //Create og choose a room
+                chooseCreateEnterRoomAndGetOldMessages();
 
-            //Create og choose a room
-            chooseCreateEnterRoomAndGetOldMessages();
+                //Handle the rest of the user inputs through a loop
+                inputHandlerLoop();
+            }catch(NoSuchElementException e){
 
-            //Handle the rest of the user inputs through a loop
-            inputHandlerLoop();
-
+            } finally {
+                this.messageQueue.add("closeThisSocketWhitLongCode1234567890Crypt");
+            }
         });
         try {
 
@@ -80,6 +85,9 @@ public class Client extends Thread implements Closeable {
 
                 while (true) {
                     String inbound = messageQueue.take();
+                    if(inbound.equals("closeThisSocketWhitLongCode1234567890Crypt")){
+                        break;
+                    }
                     clientHandler.printString(inbound);
                 }
             }
@@ -88,6 +96,7 @@ public class Client extends Thread implements Closeable {
         } catch (InterruptedException e) {
             System.out.println(name + " exited with: " + e.getMessage());
         } finally {
+            api.removeUserFromactiveUsers(user);
             //We remove the client through the method close(), and close the socket
             try { close(); } catch (IOException e) {
                 e.printStackTrace();
