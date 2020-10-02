@@ -84,7 +84,7 @@ public class ClientHandler {
      */
 
     public String doYouWantToCreateARoomOrEnterExisting(){
-        out.println("Write the name of the room you want to enter enter, or [Create] for a new room.");
+        out.println("Write the name of the room you want to enter, or [Create] for a new room.");
         out.flush();
         return prompt();
     }
