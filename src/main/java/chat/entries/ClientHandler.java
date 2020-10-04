@@ -17,6 +17,7 @@ public class ClientHandler {
     };
 
     public void welcomeMessageUser(String name){
+        out.println("");
         out.println("Welcome to the chat " + name);
         out.flush();
     }
@@ -28,21 +29,25 @@ public class ClientHandler {
     }
 
     public void userAlreadyExists() {
+        out.println("");
         out.println("User already exists.. Please choose another username.");
         out.flush();
     }
 
     public void unknownInput(){
+        out.println("");
         out.println("Sorry, we couldn't identify your input. Please try again.");
         out.flush();
     }
 
     public void unknownUsername(){
+        out.println("");
         out.println("Sorry, we couldn't identify your username");
         out.flush();
     }
 
     public void userExists(){
+        out.println("");
         out.println("Sorry the user exists....");
         out.flush();
     }
@@ -84,6 +89,7 @@ public class ClientHandler {
      */
 
     public String doYouWantToCreateARoomOrEnterExisting(){
+        out.println("");
         out.println("Write the name of the room you want to enter, or [Create] for a new room.");
         out.flush();
         return prompt();
@@ -95,43 +101,52 @@ public class ClientHandler {
     }
 
     public void noRoomAvailable(){
+        out.println("");
         out.println("No rooms are available at the moment :/");
         out.flush();
     }
 
     public void hereAreTheActiveRooms(){
+        out.println("");
         out.println("Here are the active rooms :)");
         out.flush();
     }
 
     public String whatIsTheNewRoomsName() {
+        out.println("");
         out.println("What is the new rooms name?");
         out.flush();
         return prompt();
     }
 
     public void UnknownRoomNameOrInput() {
+        out.println("");
         out.println("Unknown room name or command... :/");
         out.flush();
     }
 
     public void returnToLobby(String roomName) {
+        out.println("");
         out.println("You have exited the room: " + roomName + " and returned to the lobby.");
         out.flush();
     }
 
     public void roomAlreadyExists() {
+        out.println("");
         out.println("Room already exists.. Please choose another name for the room.");
         out.flush();
     }
 
     public void youHavEnteredTheRoom(String roomName) {
+        out.println("");
         out.println("You have entered the room: " + roomName);
         out.println("Write [!help] to see your options");
+        out.println("");
         out.flush();
     }
 
     public void help() {
+        out.println("");
         out.println("[!lobby] Return to Lobby - Create/Choose room)");
         out.println("[!list]  See all the clients that are connected to the room");
         out.println("[!sendP] Send a private message");
@@ -142,11 +157,13 @@ public class ClientHandler {
     }
 
     public void roomName(String userName, String roomName) {
+        out.println("");
         out.println(userName + " you are currently in the " + roomName + " room.");
         out.flush();
     }
 
     public void roomListMessage(String roomName) {
+        out.println("");
         out.println("The following users are connected to the room: " + roomName);
         out.flush();
     }
@@ -157,31 +174,37 @@ public class ClientHandler {
     }
 
     public void roomNameInvalid() {
+        out.println("");
         out.println("Room name can't be 'Create'... idiot!");
         out.flush();
     }
 
     public void invalidRecipientName() {
+        out.println("");
         out.println("Sorry... The username you want to send to is invalid. You are returned to the chat.");
         out.flush();
     }
 
     public void whoDoYouWantToSendAPrivateMessageTo() {
+        out.println("");
         out.println("Please write the username of the person you want to send a private message to.");
         out.flush();
     }
 
     public void writeThePrivateMessage() {
+        out.println("");
         out.println("Please write the private message and press [Enter].");
         out.flush();
     }
 
     public void youAreAldreadyLoogedIn() {
+        out.println("");
         out.println("Sorry... You are already logged in with this user! Bye..");
         out.flush();
     }
 
     public void passwordsDoNotMatch() {
+        out.println("");
         out.println("Sorry... Passwords do not match!");
         out.flush();
     }
@@ -200,7 +223,14 @@ public class ClientHandler {
     }
 
     public void unknownUsernameOrPassword() {
+        out.println("");
         out.println("Sorry, we couldn't identify your username or password");
+        out.flush();
+    }
+
+    public void announceExitChatFromLobby() {
+        out.println("");
+        out.println("You have exited the chat. Bye!...");
         out.flush();
     }
 }

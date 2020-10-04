@@ -152,7 +152,7 @@ public class Server extends Thread {
             if(c.getRoom() != null){
                 if (c.getRoom().getName().equalsIgnoreCase(room.getName())){
 
-                    c.sendMessage(from.getUserName() + " joined the chat!");
+                    c.sendMessage(from.getUserName() + " joined the chat!\n");
                 }
             }
         }
@@ -166,9 +166,10 @@ public class Server extends Thread {
             if(c.getRoom() != null){
                 if (c.getRoom().getName().equalsIgnoreCase(room.getName())){
 
-                    c.sendMessage(from.getUserName() + " left the chat!");
+                    c.sendMessage(from.getUserName() + " left the chat!\n");
                 }
             }
         }
     }
+
 }

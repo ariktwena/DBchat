@@ -3,6 +3,7 @@ package chat.api;
 import chat.core.*;
 import chat.domain.messages.MessageService;
 import chat.domain.privatemessages.PrivateMessageService;
+import chat.domain.room.ExitRoom;
 import chat.domain.room.InvalidRoomName;
 import chat.domain.room.RoomAlreadyExistsInDB;
 import chat.domain.room.RoomService;
@@ -132,7 +133,7 @@ public class DBChat {
 
     }
 
-    public synchronized Room createRoomInSystemAndDB(String roomName) throws RoomAlreadyExistsInDB, InvalidRoomName {
+    public synchronized Room createRoomInSystemAndDB(String roomName) throws RoomAlreadyExistsInDB, InvalidRoomName, ExitRoom {
 
         if(roomExistsInDB(roomName)){
 
@@ -142,7 +143,11 @@ public class DBChat {
 
             throw new InvalidRoomName();
 
-        } else {
+        } else if(roomName.equalsIgnoreCase("!exit")){
+
+            throw new ExitRoom();
+
+        }else {
 
             //We create a room and also create the room in the DB. Thereafter we set and return the room.
             Room room = new Room(roomName);

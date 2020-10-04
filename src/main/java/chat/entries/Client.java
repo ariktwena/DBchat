@@ -2,6 +2,7 @@ package chat.entries;
 
 import chat.core.*;
 import chat.api.*;
+import chat.domain.room.ExitRoom;
 import chat.domain.room.InvalidRoomName;
 import chat.domain.room.RoomAlreadyExistsInDB;
 import chat.domain.user.InvalidPassword;
@@ -361,17 +362,21 @@ public class Client extends Thread implements Closeable {
         //Create or choose room from list of available rooms
         createOrEnterExistingRoom(showAvailableRooms());
 
-        //Subscription to room
-        subscribeToRoom();
+        //Subscription to room OR NullPointerException if the user exits the chat
+        try {
+            subscribeToRoom();
 
-        //Enter a new room message
-        clientHandler.youHavEnteredTheRoom(room.getName());
+            //Enter a new room message
+            clientHandler.youHavEnteredTheRoom(room.getName());
 
-        //Announce client username to other clients in the room
-        server.announceName(this, room);
+            //Announce client username to other clients in the room
+            server.announceName(this, room);
 
-        //Load the last 10 messages in the current room
-        messagesFromDB(api.getThe10LastRoomMessages(room, user));
+            //Load the last 10 messages in the current room
+            messagesFromDB(api.getThe10LastRoomMessages(room, user));
+        } catch (NullPointerException e){
+            //NullPointerException if the user exits the chat => subscription and room equals Null
+        }
     }
 
 
@@ -424,7 +429,30 @@ public class Client extends Thread implements Closeable {
                     } catch (InvalidRoomName e) {
 
                         clientHandler.roomNameInvalid();
+
+                    } catch (ExitRoom e){
+
+                        //Client exits the lobby announcement
+                        clientHandler.announceExitChatFromLobby();
+
+                        try {
+                            //Close client socket
+                            close();
+                        } catch (IOException ee) {
+                            ee.printStackTrace();
+                        }
                     }
+                }
+            } else if (answer.equalsIgnoreCase("!exit")){
+
+                //Client exits the lobby announcement
+                clientHandler.announceExitChatFromLobby();
+
+                try {
+                    //Close client socket
+                    close();
+                } catch (IOException ee) {
+                    ee.printStackTrace();
                 }
             } else {
 
